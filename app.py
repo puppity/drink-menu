@@ -21,10 +21,9 @@ cloudinary.config(
 @app.route('/')
 def index():
     try:
-        # ดึงรูปมาแสดง 100 รูปล่าสุด
         result = cloudinary.api.resources(type="upload", prefix="menu/", max_results=100)
         images = result.get('resources', [])
-        # เรียงลำดับจากใหม่ไปเก่า (created_at)
+        # เรียงรูปใหม่สุดขึ้นก่อน
         images.sort(key=lambda x: x['created_at'], reverse=True)
     except:
         images = []
@@ -45,30 +44,22 @@ def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
+    # ถ้ามีการกดอัปโหลด
     if request.method == 'POST':
-        # รับไฟล์แบบ List (หลายไฟล์)
         files = request.files.getlist('file')
         custom_name = request.form.get('name', '').strip()
-        
         uploaded_count = 0
         
-        # วนลูปทำทีละรูป
         for i, file in enumerate(files):
             if file:
                 try:
-                    # --- ตั้งชื่อรูป ---
+                    # ตั้งชื่อ
                     if custom_name:
-                        # ถ้าคนกรอกชื่อมา
-                        if len(files) > 1:
-                            # ถ้าอัปหลายไฟล์ ให้เติมเลขต่อท้าย เช่น "Coffee_1", "Coffee_2"
-                            final_name = f"{custom_name}_{i+1}"
-                        else:
-                            final_name = custom_name
+                        final_name = f"{custom_name}_{i+1}" if len(files) > 1 else custom_name
                     else:
-                        # ถ้าไม่กรอกชื่อ -> ใช้ชื่อไฟล์เดิม (ตัด .jpg ออก)
                         final_name = os.path.splitext(file.filename)[0]
 
-                    # --- บีบอัดรูป (Code เดิม) ---
+                    # ย่อรูป
                     img = Image.open(file)
                     if img.mode != 'RGB': img = img.convert('RGB')
                     if img.width > 2048 or img.height > 2048: img.thumbnail((2048, 2048))
@@ -77,17 +68,40 @@ def admin():
                     img.save(img_byte_arr, format='JPEG', quality=85)
                     img_byte_arr.seek(0)
                     
-                    # อัปโหลด
+                    # ส่งขึ้น Cloud
                     cloudinary.uploader.upload(img_byte_arr, public_id=f"menu/{final_name}")
                     uploaded_count += 1
-                    
                 except Exception as e:
-                    print(f"Error uploading {file.filename}: {e}")
+                    print(f"Error: {e}")
 
-        flash(f'✅ อัปโหลดเรียบร้อยทั้งหมด {uploaded_count} รูป!')
+        if uploaded_count > 0:
+            flash(f'✅ อัปโหลดเรียบร้อย {uploaded_count} รูป!')
+        
         return redirect(url_for('admin'))
-            
-    return render_template('admin.html')
+
+    # --- ส่วนที่เพิ่ม: ดึงรายชื่อรูปมาแสดงเพื่อเตรียมให้ลบ ---
+    try:
+        result = cloudinary.api.resources(type="upload", prefix="menu/", max_results=100)
+        images = result.get('resources', [])
+        images.sort(key=lambda x: x['created_at'], reverse=True)
+    except:
+        images = []
+        
+    return render_template('admin.html', images=images)
+
+# --- ส่วนที่เพิ่ม: ฟังก์ชันลบรูป ---
+@app.route('/delete/<path:public_id>')
+def delete_image(public_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    try:
+        cloudinary.uploader.destroy(public_id)
+        flash('🗑️ ลบรูปเรียบร้อยแล้ว')
+    except Exception as e:
+        flash(f'เกิดข้อผิดพลาดในการลบ: {e}')
+        
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(debug=True)
