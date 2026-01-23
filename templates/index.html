@@ -135,7 +135,7 @@
         </div>
     </div>
 
-    <div id="selectionBar" class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up rounded-t-2xl">
+    <div id="selectionBar" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 z-40 slide-up rounded-t-2xl">
         <div class="max-w-xl mx-auto">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-gray-500 font-bold text-sm" id="selectionStatus">เลือกแล้ว 0 รูป</span>
@@ -149,21 +149,18 @@
     </div>
 
     <script>
-        // --- 🛠️ ตรวจจับว่าเป็น iPad หรือ Mobile จริงๆ (ไม่สนขนาดจอ) ---
-        // ontouchstart: เช็คว่าจอสัมผัสไหม
-        // maxTouchPoints > 0: เช็คว่ามีจุดสัมผัสไหม (iPad จะมีค่านี้ ถึงแม้จอจะใหญ่เท่าคอม)
+        // ตรวจจับอุปกรณ์สัมผัส (iPad จะเข้าเงื่อนไขนี้)
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         
         window.onload = function() {
-            // เลือกปุ่มที่จะโชว์ตามประเภทอุปกรณ์
             if (isTouchDevice) {
-                // ถ้าเป็น iPad/Mobile -> โชว์ปุ่มเลือกรูป
+                // ถ้าเป็น iPad/Mobile -> เปิดปุ่มเลือกรูป
                 document.getElementById('mobileControls').classList.remove('hidden');
                 document.getElementById('tutorialSingle').classList.remove('hidden');
             } else {
-                // ถ้าเป็น PC (เมาส์) -> โชว์ปุ่มโหลด ZIP
+                // ถ้าเป็น PC (เมาส์) -> เปิดปุ่มโหลด ZIP
                 document.getElementById('pcControls').classList.remove('hidden');
-                document.getElementById('pcControls').classList.add('flex'); // เพิ่ม flex ให้ปุ่ม PC เรียงสวย
+                document.getElementById('pcControls').classList.add('flex');
             }
         }
 
@@ -171,7 +168,6 @@
 
         let currentTab = 'watermark'; let isSelectMode = false; let preparedFiles = [];
         
-        // ... (ส่วน Tabs และ Search เหมือนเดิม) ...
         function switchTab(tab) {
             currentTab = tab; if(isSelectMode) exitSelectMode();
             document.getElementById('content-watermark').classList.add('hidden'); document.getElementById('content-clean').classList.add('hidden');
@@ -190,7 +186,7 @@
             }
         }
 
-        // ... (ฟังก์ชัน ZIP ของ PC เหมือนเดิม) ...
+        // PC ZIP Function
         async function downloadZipCurrentTab() {
             let activeGridId = currentTab === 'watermark' ? 'grid-watermark' : 'grid-clean';
             let cards = Array.from(document.getElementById(activeGridId).getElementsByClassName('image-card')).filter(c => c.style.display !== 'none');
@@ -209,7 +205,7 @@
             } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); } finally { event.target.innerText = oldText; event.target.disabled = false; }
         }
 
-        // ... (ฟังก์ชัน Mobile Select Mode เหมือนเดิม) ...
+        // Mobile/iPad Select Mode
         function enterSelectMode() {
             isSelectMode = true; document.getElementById('tutorialMulti').classList.remove('hidden');
             document.querySelectorAll('.selection-overlay').forEach(el => el.classList.remove('hidden'));
@@ -240,7 +236,6 @@
             else { btn.classList.add('opacity-50', 'cursor-not-allowed'); btn.disabled = true; }
         }
 
-        // ... (ฟังก์ชัน Loading Overlay) ...
         async function startProcessing() {
             const checkboxes = getActiveCheckboxes(); let targets = checkboxes.filter(cb => cb.checked); if (targets.length === 0) return;
             const modal = document.getElementById('processingModal'); const loadingState = document.getElementById('stateLoading');
