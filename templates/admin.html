@@ -5,27 +5,53 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 p-5">
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 class="text-xl font-bold mb-4">📤 อัปโหลดเมนู (ทีละหลายรูปได้)</h1>
+    <div class="max-w-2xl mx-auto">
         
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="bg-green-100 text-green-700 p-2 rounded mb-4 text-sm whitespace-pre-line">{{ messages[0] }}</div>
-            {% endif %}
-        {% endwith %}
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h1 class="text-xl font-bold mb-4">📤 อัปโหลดเมนู</h1>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="bg-blue-100 text-blue-800 p-3 rounded mb-4 text-sm">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
 
-        <form method="POST" enctype="multipart/form-data">
-            <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
-            <input type="text" name="name" class="w-full p-2 border rounded mb-1" placeholder="ถ้าเว้นว่าง จะใช้ชื่อไฟล์เดิม">
-            <p class="text-xs text-gray-400 mb-4">*แนะนำ: ถ้าอัปหลายรูป ให้เว้นช่องนี้ว่างไว้</p>
+            <form method="POST" enctype="multipart/form-data">
+                <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
+                <input type="text" name="name" class="w-full p-2 border rounded mb-2" placeholder="เว้นว่างเพื่อใช้ชื่อไฟล์เดิม">
+                
+                <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ:</label>
+                <input type="file" name="file" required multiple accept="image/*" class="w-full mb-6">
+                
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow">อัปโหลดทันที</button>
+            </form>
+            <a href="/" class="block text-center mt-4 text-gray-500 underline text-sm">ไปดูหน้าเว็บจริง</a>
+        </div>
+
+        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รายการเมนูทั้งหมด ({{ images|length }})</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            {% for img in images %}
+            <div class="flex items-center justify-between p-3 border-b last:border-0 hover:bg-gray-50">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <img src="{{ img['secure_url'] }}" class="w-12 h-12 object-cover rounded bg-gray-200">
+                    <span class="text-sm font-medium text-gray-700 truncate">
+                        {{ img['public_id'].replace('menu/', '') }}
+                    </span>
+                </div>
+                
+                <a href="/delete/{{ img['public_id'] }}" 
+                   onclick="return confirm('⚠️ ยืนยันที่จะลบรูปนี้? \n(ลบแล้วกู้คืนไม่ได้นะครับ)')"
+                   class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold hover:bg-red-200 transition">
+                   ลบ 🗑️
+                </a>
+            </div>
+            {% endfor %}
             
-            <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ (ได้หลายรูป):</label>
-            <input type="file" name="file" required multiple accept="image/*" class="w-full mb-6">
-            
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">อัปโหลดทันที</button>
-        </form>
-        
-        <a href="/" class="block text-center mt-4 text-gray-500 underline">กลับหน้าหลัก</a>
+            {% if images|length == 0 %}
+            <div class="p-8 text-center text-gray-400">ยังไม่มีรูปภาพครับ</div>
+            {% endif %}
+        </div>
+
     </div>
 </body>
 </html>
