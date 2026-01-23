@@ -17,8 +17,22 @@
             {% endwith %}
 
             <form method="POST" enctype="multipart/form-data">
+                <div class="mb-4 bg-gray-50 p-3 rounded border">
+                    <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซนรูปภาพ:</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="type" value="watermarked" checked class="w-4 h-4 text-blue-600">
+                            <span class="ml-2 text-sm">มีชื่อเมนูในภาพ</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="type" value="clean" class="w-4 h-4 text-blue-600">
+                            <span class="ml-2 text-sm">ไม่มีชื่อเมนูในภาพ</span>
+                        </label>
+                    </div>
+                </div>
+
                 <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
-                <input type="text" name="name" class="w-full p-2 border rounded mb-2" placeholder="เว้นว่างเพื่อใช้ชื่อไฟล์เดิม">
+                <input type="text" name="name" class="w-full p-2 border rounded mb-2" placeholder="ถ้าเว้นว่าง จะใช้ชื่อไฟล์เดิม">
                 
                 <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ:</label>
                 <input type="file" name="file" required multiple accept="image/*" class="w-full mb-6">
@@ -28,30 +42,33 @@
             <a href="/" class="block text-center mt-4 text-gray-500 underline text-sm">ไปดูหน้าเว็บจริง</a>
         </div>
 
-        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รายการเมนูทั้งหมด ({{ images|length }})</h2>
+        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รูปภาพทั้งหมดในระบบ</h2>
         <div class="bg-white rounded-lg shadow overflow-hidden">
             {% for img in images %}
-            <div class="flex items-center justify-between p-3 border-b last:border-0 hover:bg-gray-50">
+            <div class="flex items-center justify-between p-3 border-b hover:bg-gray-50">
                 <div class="flex items-center gap-3 overflow-hidden">
                     <img src="{{ img['secure_url'] }}" class="w-12 h-12 object-cover rounded bg-gray-200">
-                    <span class="text-sm font-medium text-gray-700 truncate">
-                        {{ img['public_id'].replace('menu/', '') }}
-                    </span>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-medium text-gray-700 truncate w-40">
+                            {{ img['public_id'].split('/')[-1] }}
+                        </span>
+                        <span class="text-xs text-gray-400">
+                            {% if 'watermarked' in img['public_id'] %} 
+                                💧 มีลายน้ำ 
+                            {% else %} 
+                                ✨ ไม่มีลายน้ำ 
+                            {% endif %}
+                        </span>
+                    </div>
                 </div>
-                
                 <a href="/delete/{{ img['public_id'] }}" 
-                   onclick="return confirm('⚠️ ยืนยันที่จะลบรูปนี้? \n(ลบแล้วกู้คืนไม่ได้นะครับ)')"
-                   class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold hover:bg-red-200 transition">
-                   ลบ 🗑️
+                   onclick="return confirm('ยืนยันที่จะลบรูปนี้?')"
+                   class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold hover:bg-red-200">
+                   ลบ
                 </a>
             </div>
             {% endfor %}
-            
-            {% if images|length == 0 %}
-            <div class="p-8 text-center text-gray-400">ยังไม่มีรูปภาพครับ</div>
-            {% endif %}
         </div>
-
     </div>
 </body>
 </html>
