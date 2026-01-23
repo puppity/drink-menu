@@ -46,60 +46,45 @@ def login():
         else:
             flash('รหัสผ่านไม่ถูกต้อง!')
     return render_template('login.html')
-
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
+    # --- ส่วนรับรูปภาพ (เหมือนเดิม) ---
     if request.method == 'POST':
         files = request.files.getlist('file')
         custom_name = request.form.get('name', '').strip()
-        upload_type = request.form.get('type') # รับค่าว่าเลือกโซนไหน
+        upload_type = request.form.get('type')
         
         uploaded_count = 0
         
         for i, file in enumerate(files):
             if file:
                 try:
-                    # ตั้งชื่อไฟล์
                     if custom_name:
                         final_name = f"{custom_name}_{i+1}" if len(files) > 1 else custom_name
                     else:
                         final_name = os.path.splitext(file.filename)[0]
 
-                    # --- ขั้นตอนการย่อรูป (เพื่อไม่ให้ Server ล่ม) ---
                     img = Image.open(file)
-                    
-                    # แปลงเป็น RGB เสมอ
-                    if img.mode != 'RGB': 
-                        img = img.convert('RGB')
-                    
-                    # 1. ย่อแบบหยาบก่อน (Draft) เพื่อลดการกิน RAM ทันทีที่เปิดไฟล์
+                    if img.mode != 'RGB': img = img.convert('RGB')
                     img.draft('RGB', (2048, 2048)) 
-                    
-                    # 2. ย่อจริงจังอีกทีไม่ให้เกิน 2048px (ชัดระดับ HD)
                     if img.width > 2048 or img.height > 2048: 
                         img.thumbnail((2048, 2048))
 
-                    # --- เลือกโฟลเดอร์ปลายทาง (ไม่มีการวาดลายน้ำแล้ว) ---
                     if upload_type == 'watermarked':
                         folder = "menu/watermarked"
                     else:
                         folder = "menu/clean"
 
-                    # เตรียมไฟล์ส่งขึ้น Cloud
                     img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='JPEG', quality=85) # บีบอัดเหลือ 85%
+                    img.save(img_byte_arr, format='JPEG', quality=85)
                     img_byte_arr.seek(0)
                     
-                    # Upload
                     cloudinary.uploader.upload(img_byte_arr, public_id=f"{folder}/{final_name}")
                     uploaded_count += 1
-                    
-                    # คืนหน่วยความจำ
                     img.close()
-
                 except Exception as e:
                     print(f"Error uploading {file.filename}: {e}")
 
@@ -108,13 +93,33 @@ def admin():
         
         return redirect(url_for('admin'))
 
-    # ส่วนแสดงรายการรูปล่างสุด (สำหรับลบ)
+    # --- 🔥 ส่วนที่แก้ไข: ดึงรูปมาแสดง (เพิ่มจำนวน + เรียงใหม่) ---
     try:
-        res_wm = cloudinary.api.resources(type="upload", prefix="menu/watermarked/", max_results=50)
-        res_cl = cloudinary.api.resources(type="upload", prefix="menu/clean/", max_results=50)
+        # 1. เพิ่ม max_results เป็น 500 (Cloudinary ให้สูงสุด 500 ต่อครั้ง)
+        # 2. ใส่ direction="desc" เพื่อบอกให้เอา "รูปล่าสุด" ขึ้นก่อนเสมอ
+        
+        res_wm = cloudinary.api.resources(
+            type="upload", 
+            prefix="menu/watermarked/", 
+            max_results=500, 
+            direction="desc" 
+        )
+        
+        res_cl = cloudinary.api.resources(
+            type="upload", 
+            prefix="menu/clean/", 
+            max_results=500, 
+            direction="desc"
+        )
+        
+        # รวมรายการ
         all_images = res_wm.get('resources', []) + res_cl.get('resources', [])
+        
+        # เรียงใน Python อีกรอบเพื่อความชัวร์ (ใหม่สุดอยู่บนสุด)
         all_images.sort(key=lambda x: x['created_at'], reverse=True)
-    except:
+        
+    except Exception as e:
+        print(f"Error fetching images: {e}")
         all_images = []
         
     return render_template('admin.html', images=all_images)
@@ -132,3 +137,4 @@ def delete_image(public_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
