@@ -134,7 +134,54 @@ def delete_image(public_id):
     except Exception as e:
         flash(f'เกิดข้อผิดพลาด: {e}')
     return redirect(url_for('admin'))
+@app.route('/upload_api', methods=['POST'])
+def upload_api():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    file = request.files.get('file')
+    custom_name = request.form.get('name', '').strip()
+    upload_type = request.form.get('type')
+    index = request.form.get('index', '0') # รับลำดับรูปมาด้วย (เผื่อตั้งชื่อ)
 
+    if file:
+        try:
+            # ตั้งชื่อไฟล์
+            if custom_name:
+                # ถ้ามีการตั้งชื่อ จะใส่เลขรันตามหลังให้
+                final_name = f"{custom_name}_{index}"
+            else:
+                final_name = os.path.splitext(file.filename)[0]
+
+            # Process รูปภาพ
+            img = Image.open(file)
+            if img.mode != 'RGB': img = img.convert('RGB')
+            img.draft('RGB', (2048, 2048))
+            if img.width > 2048 or img.height > 2048: 
+                img.thumbnail((2048, 2048))
+
+            # เลือกโฟลเดอร์
+            if upload_type == 'watermarked':
+                folder = "menu/watermarked"
+            else:
+                folder = "menu/clean"
+
+            # Save to Buffer
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='JPEG', quality=85)
+            img_byte_arr.seek(0)
+            
+            # Upload
+            cloudinary.uploader.upload(img_byte_arr, public_id=f"{folder}/{final_name}")
+            img.close()
+            
+            return {'status': 'success', 'file': final_name}
+
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}, 500
+            
+    return {'status': 'error', 'message': 'No file'}, 400
 if __name__ == '__main__':
     app.run(debug=True)
+
 
