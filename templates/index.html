@@ -13,31 +13,95 @@
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
         .tab-inactive { color: #6b7280; }
         
-        /* Animation */
-        .fade-in { animation: fadeIn 0.2s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
         .slide-up { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* Checkbox ใหญ่ๆ */
         .custom-checkbox { width: 28px; height: 28px; cursor: pointer; accent-color: #2563eb; }
+        
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ปุ่มเขียวเต้นตุบๆ ให้รู้ว่ากดได้ */
+        .pulse-btn { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
     </style>
 </head>
-<body class="bg-gray-50 p-4 font-sans text-gray-800 pb-24"> <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center hidden p-4 fade-in">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-            <div class="text-5xl mb-4">💡</div>
+<body class="bg-gray-50 p-4 font-sans text-gray-800 pb-32">
+
+    <div id="tutorialSingle" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden p-4 fade-in">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center relative">
+            <button onclick="closeModal('tutorialSingle')" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">✕</button>
+            <div class="text-5xl mb-4">👆</div>
             <h3 class="text-xl font-bold text-gray-800 mb-2">วิธีบันทึกรูป</h3>
-            <div class="text-gray-600 mb-6 text-sm leading-relaxed text-left bg-gray-50 p-4 rounded-xl border">
-                <p class="mb-2"><b>วิธีที่ 1 (รูปเดียว):</b><br>กดค้างที่รูป แล้วกด "บันทึกภาพ"</p>
-                <hr class="border-gray-200 my-2">
-                <p><b>วิธีที่ 2 (หลายรูป):</b><br>กดปุ่ม <b>"เลือกหลายรูป"</b> ด้านบน<br>แล้วติ๊กเลือกรูปที่ต้องการได้เลย</p>
-            </div>
-            <button onclick="closeModal()" class="bg-blue-600 text-white w-full py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg active:scale-95 transition">
-                เข้าใจแล้ว
+            <p class="text-gray-600 mb-6 text-sm">
+                สามารถ <b>"กดค้างที่รูป"</b><br>แล้วเลือก "บันทึกภาพ" ได้เลยครับ
+            </p>
+            <button onclick="closeModal('tutorialSingle')" class="bg-gray-800 text-white w-full py-3 rounded-xl font-bold hover:bg-gray-900 transition">
+                รับทราบ
             </button>
         </div>
     </div>
+
+    <div id="tutorialMulti" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden p-4 fade-in">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center relative">
+            <div class="text-5xl mb-4">☑️</div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">โหมดเลือกหลายรูป</h3>
+            <p class="text-gray-600 mb-6 text-sm">
+                1. จิ้มเลือกรูปที่ต้องการ<br>
+                2. กดปุ่ม <b>"ส่งเข้าเครื่อง"</b> ด้านล่าง<br>
+                3. เลือกเมนู <b>Save Images</b>
+            </p>
+            <button onclick="closeModal('tutorialMulti')" class="bg-blue-600 text-white w-full py-3 rounded-xl font-bold hover:bg-blue-700 transition">
+                เริ่มเลือกเลย!
+            </button>
+        </div>
+    </div>
+
+    <div id="processingModal" class="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center hidden p-6 fade-in">
+        
+        <div id="stateLoading" class="text-center w-full max-w-sm">
+            <div class="loader mb-6"></div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">กำลังเตรียมรูปภาพ...</h3>
+            <p class="text-gray-500 text-sm mb-4">กรุณารอสักครู่ อย่าเพิ่งปิดหน้านี้นะครับ</p>
+            
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-xs text-gray-400">0/0</p>
+        </div>
+
+        <div id="stateReady" class="text-center w-full max-w-sm hidden">
+            <div class="text-6xl mb-4">✅</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">เสร็จเรียบร้อย!</h3>
+            <p class="text-gray-600 mb-8">รูปภาพพร้อมแล้ว กดปุ่มด้านล่างเพื่อบันทึกได้เลย</p>
+            
+            <button onclick="triggerShare()" class="w-full bg-green-500 text-white text-xl py-5 rounded-2xl font-bold shadow-xl pulse-btn hover:bg-green-600 transition transform active:scale-95">
+                📲 แตะตรงนี้เพื่อ Save
+            </button>
+            
+            <button onclick="closeProcessing()" class="mt-6 text-gray-400 text-sm underline">
+                ยกเลิก / ปิด
+            </button>
+        </div>
+    </div>
+
 
     <div class="max-w-xl mx-auto relative">
         <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 pt-4">☕ คลังรูปเมนูชาพระนคร</h1>
@@ -51,14 +115,14 @@
             </button>
         </div>
 
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-4 gap-2">
             <input type="text" id="searchInput" onkeyup="filterImages()" 
                    placeholder="🔍 ค้นหาเมนู..." 
-                   class="flex-1 p-2.5 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white mr-2">
+                   class="flex-1 p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
             
-            <button onclick="toggleSelectMode(true)" id="enableSelectBtn"
-                    class="bg-gray-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-gray-900 active:scale-95 transition whitespace-nowrap">
-                ☑️ เลือกหลายรูป
+            <button onclick="enterSelectMode()" id="enableSelectBtn"
+                    class="bg-gray-800 text-white px-4 py-3 rounded-xl font-bold text-sm shadow hover:bg-gray-900 active:scale-95 transition whitespace-nowrap flex items-center gap-2">
+                <span>☑️</span> เลือกหลายรูป
             </button>
         </div>
 
@@ -66,14 +130,13 @@
             <div id="grid-watermark" class="grid grid-cols-2 gap-3 image-grid">
                 {% for img in wm_images %}
                 <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
-                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-10 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" 
                                data-name="{{ img['public_id'].split('/')[-1] }}"
                                onclick="event.stopPropagation(); updateCount();"
                                class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
-
-                    <img src="{{ img['secure_url'] }}" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
                     <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
@@ -89,14 +152,13 @@
             <div id="grid-clean" class="grid grid-cols-2 gap-3 image-grid">
                 {% for img in cl_images %}
                 <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
-                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-10 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" 
                                data-name="{{ img['public_id'].split('/')[-1] }}"
                                onclick="event.stopPropagation(); updateCount();"
                                class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
-
-                    <img src="{{ img['secure_url'] }}" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
                     <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
@@ -109,43 +171,51 @@
         </div>
     </div>
 
-    <div id="selectionBar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up">
-        <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
-            <button onclick="toggleSelectMode(false)" class="bg-gray-200 text-gray-700 px-5 py-3 rounded-xl font-bold w-1/3 hover:bg-gray-300">
-                ยกเลิก
-            </button>
-            <button onclick="handleSaveImages()" id="actionBtn" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold w-2/3 shadow-lg hover:bg-blue-700 active:scale-95 transition flex items-center justify-center gap-2">
-                📲 ส่งเข้าเครื่อง <span id="count-badge" class="bg-white text-blue-600 text-xs px-2 py-0.5 rounded-full hidden">0</span>
-            </button>
-        </div>
-        <div class="text-center mt-2">
-            <label class="inline-flex items-center text-sm text-gray-500 font-medium">
-                <input type="checkbox" id="selectAllBtn" onchange="toggleSelectAll()" class="w-4 h-4 mr-2 rounded text-blue-600">
-                เลือกทั้งหมดในหน้านี้
-            </label>
+    <div id="selectionBar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up rounded-t-2xl">
+        <div class="max-w-xl mx-auto">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-gray-500 font-bold text-sm" id="selectionStatus">เลือกแล้ว 0 รูป</span>
+                <button onclick="toggleSelectAll()" class="text-blue-600 text-sm font-bold">เลือกทั้งหมด</button>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="exitSelectMode()" class="bg-gray-100 text-gray-600 px-4 py-3 rounded-xl font-bold w-1/3 hover:bg-gray-200">
+                    ยกเลิก
+                </button>
+                <button onclick="startProcessing()" id="sendBtn" class="bg-blue-600 text-white px-4 py-3 rounded-xl font-bold w-2/3 shadow-lg hover:bg-blue-700 active:scale-95 transition flex items-center justify-center gap-2">
+                    📲 ส่งเข้าเครื่อง
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        window.onload = function() { document.getElementById('infoModal').classList.remove('hidden'); }
-        function closeModal() { document.getElementById('infoModal').classList.add('hidden'); }
+        // 1. ตอนโหลดหน้าเว็บ: โชว์วิธีใช้รูปเดียว
+        window.onload = function() {
+            // เช็คว่าเคยปิดไปหรือยัง (ถ้าอยากให้โชว์ทุกครั้งให้ลบ if นี้ออก)
+            // if (!localStorage.getItem('sawTutorial')) {
+                document.getElementById('tutorialSingle').classList.remove('hidden');
+            // }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            // localStorage.setItem('sawTutorial', 'true');
+        }
 
         let currentTab = 'watermark';
         let isSelectMode = false;
+        let preparedFiles = [];
 
-        // --- สลับแท็บ ---
         function switchTab(tab) {
             currentTab = tab;
-            // ถ้าสลับแท็บ ให้ปิดโหมดเลือกก่อน เพื่อกันงง
-            if(isSelectMode) toggleSelectMode(false);
-
+            if(isSelectMode) exitSelectMode();
+            
             document.getElementById('content-watermark').classList.add('hidden');
             document.getElementById('content-clean').classList.add('hidden');
             document.getElementById('content-' + tab).classList.remove('hidden');
             
             document.getElementById('btn-watermark').className = "flex-1 pb-3 text-center transition " + (tab === 'watermark' ? 'tab-active' : 'tab-inactive');
             document.getElementById('btn-clean').className = "flex-1 pb-3 text-center transition " + (tab === 'clean' ? 'tab-active' : 'tab-inactive');
-            
             filterImages(); 
         }
 
@@ -159,44 +229,33 @@
             }
         }
 
-        // --- 🔥 Logic โหมดเลือก ---
-        function toggleSelectMode(enable) {
-            isSelectMode = enable;
-            const overlays = document.querySelectorAll('.selection-overlay');
-            const viewBtns = document.querySelectorAll('.view-btn'); // ปุ่มดูรูปใหญ่
-            const selectBar = document.getElementById('selectionBar');
-            const enableBtn = document.getElementById('enableSelectBtn');
-
-            if (enable) {
-                // เข้าโหมดเลือก: โชว์ Checkbox, โชว์บาร์ล่าง, ซ่อนปุ่มเปิด
-                overlays.forEach(el => el.classList.remove('hidden'));
-                // ซ่อนปุ่ม "ดูรูปใหญ่" เพื่อไม่ให้เกะกะ
-                viewBtns.forEach(btn => btn.classList.add('opacity-50', 'pointer-events-none'));
-                
-                selectBar.classList.remove('hidden');
-                enableBtn.classList.add('hidden');
-                
-                // เปลี่ยนสีปุ่มตามแท็บ
-                const actionBtn = document.getElementById('actionBtn');
-                if (currentTab === 'watermark') {
-                    actionBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                    actionBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                } else {
-                    actionBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                    actionBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                }
-            } else {
-                // ออกโหมดเลือก: ซ่อน Checkbox, ซ่อนบาร์ล่าง, เคลียร์ค่า
-                overlays.forEach(el => el.classList.add('hidden'));
-                viewBtns.forEach(btn => btn.classList.remove('opacity-50', 'pointer-events-none'));
-                
-                selectBar.classList.add('hidden');
-                enableBtn.classList.remove('hidden');
-                uncheckAll();
-            }
+        // --- Select Mode Logic ---
+        function enterSelectMode() {
+            isSelectMode = true;
+            document.getElementById('tutorialMulti').classList.remove('hidden'); // โชว์สอนวิธีใช้แบบหลายรูป
+            
+            document.querySelectorAll('.selection-overlay').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.add('opacity-30', 'pointer-events-none'));
+            
+            document.getElementById('selectionBar').classList.remove('hidden');
+            document.getElementById('enableSelectBtn').classList.add('hidden');
+            
+            // ปรับระยะด้านล่างไม่ให้บาร์บัง
+            document.body.classList.add('pb-40');
         }
 
-        // ช่วยให้กดพื้นที่รอบๆ รูปเพื่อติ๊กได้
+        function exitSelectMode() {
+            isSelectMode = false;
+            document.querySelectorAll('.selection-overlay').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('opacity-30', 'pointer-events-none'));
+            
+            document.getElementById('selectionBar').classList.add('hidden');
+            document.getElementById('enableSelectBtn').classList.remove('hidden');
+            
+            document.body.classList.remove('pb-40');
+            uncheckAll();
+        }
+
         function toggleCheckbox(overlay) {
             const checkbox = overlay.querySelector('input');
             checkbox.checked = !checkbox.checked;
@@ -210,83 +269,116 @@
         }
 
         function toggleSelectAll() {
-            const master = document.getElementById('selectAllBtn');
-            getActiveCheckboxes().forEach(cb => cb.checked = master.checked);
+            const checkboxes = getActiveCheckboxes();
+            const allChecked = checkboxes.every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
             updateCount();
         }
 
         function uncheckAll() {
             document.querySelectorAll('.img-checkbox').forEach(cb => cb.checked = false);
-            if(document.getElementById('selectAllBtn')) document.getElementById('selectAllBtn').checked = false;
             updateCount();
         }
 
         function updateCount() {
             const count = getActiveCheckboxes().filter(cb => cb.checked).length;
-            const badge = document.getElementById('count-badge');
+            document.getElementById('selectionStatus').innerText = `เลือกแล้ว ${count} รูป`;
             
-            if (count > 0) {
-                badge.innerText = count;
-                badge.classList.remove('hidden');
+            const btn = document.getElementById('sendBtn');
+            if(count > 0) {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.disabled = false;
             } else {
-                badge.classList.add('hidden');
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.disabled = true;
             }
         }
 
-        // --- 📲 ฟังก์ชันส่งไฟล์ (Web Share API) ---
-        async function handleSaveImages() {
+        // --- 🔥 Flow การโหลดแบบใหม่ (ใช้ Overlay บัง) ---
+        
+        async function startProcessing() {
             const checkboxes = getActiveCheckboxes();
             let targets = checkboxes.filter(cb => cb.checked);
             
-            if (targets.length === 0) {
-                alert("กรุณาติ๊กเลือกรูปอย่างน้อย 1 รูปครับ");
-                return;
-            }
+            if (targets.length === 0) return;
 
-            const btn = document.getElementById('actionBtn');
-            const originalHTML = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = "⏳ กำลังเตรียม...";
-
+            // 1. เปิด Modal บังหน้าจอ
+            const modal = document.getElementById('processingModal');
+            const loadingState = document.getElementById('stateLoading');
+            const readyState = document.getElementById('stateReady');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            modal.classList.remove('hidden');
+            loadingState.classList.remove('hidden');
+            readyState.classList.add('hidden');
+            progressBar.style.width = '0%';
+            
+            preparedFiles = [];
+            
+            // 2. เริ่มโหลดไฟล์
             try {
-                const filesArray = [];
-                for (let cb of targets) {
-                    const url = cb.value;
+                for (let i = 0; i < targets.length; i++) {
+                    const cb = targets[i];
+                    // อัปเดต UI
+                    const percent = Math.round(((i + 1) / targets.length) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressText.innerText = `${i + 1} / ${targets.length}`;
+
+                    const url = cb.value + "?t=" + new Date().getTime(); // กัน Cache
                     const name = cb.getAttribute('data-name') + ".jpg";
+                    
                     const res = await fetch(url);
                     const blob = await res.blob();
                     const file = new File([blob], name, { type: "image/jpeg" });
-                    filesArray.push(file);
+                    preparedFiles.push(file);
                 }
 
-                if (navigator.canShare && navigator.canShare({ files: filesArray })) {
+                // 3. โหลดเสร็จแล้ว -> เปลี่ยนหน้าเป็นปุ่มสีเขียว
+                setTimeout(() => {
+                    loadingState.classList.add('hidden');
+                    readyState.classList.remove('hidden');
+                    // ใส่ Animation เด้งขึ้นมา
+                    readyState.classList.add('fade-in');
+                }, 500); // หน่วงนิดนึงให้รู้สึก Smooth
+
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการเตรียมไฟล์");
+                closeProcessing();
+            }
+        }
+
+        // จังหวะสุดท้าย: กดปุ่มเขียวเพื่อแชร์
+        async function triggerShare() {
+            if (preparedFiles.length > 0 && navigator.canShare && navigator.canShare({ files: preparedFiles })) {
+                try {
                     await navigator.share({
-                        files: filesArray,
+                        files: preparedFiles,
                         title: 'รูปเมนู',
                         text: 'รูปเมนูครับ'
                     });
-                    // หลังจากแชร์เสร็จ ปิดโหมดเลือกเลยเพื่อความสวยงาม
-                    toggleSelectMode(false);
-                } else {
-                    alert("เครื่องนี้ไม่รองรับการส่งตรง ระบบจะโหลดเป็น ZIP ให้แทน");
-                    const zip = new JSZip();
-                    filesArray.forEach(f => zip.file(f.name, f));
-                    const content = await zip.generateAsync({type:"blob"});
-                    const zipName = currentTab === 'watermark' ? 'Menu_Watermark.zip' : 'Menu_Original.zip';
-                    saveAs(content, zipName);
-                    toggleSelectMode(false);
+                    // แชร์เสร็จแล้วปิดทุกอย่าง
+                    closeProcessing();
+                    exitSelectMode();
+                } catch (error) {
+                    console.log("Share failed:", error);
                 }
-
-            } catch (error) {
-                console.log("Error:", error);
-                if (!error.message.includes('abort')) {
-                    alert("เกิดข้อผิดพลาดในการส่งไฟล์");
-                }
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHTML;
+            } else {
+                // Fallback สำหรับ PC หรือเครื่องที่ไม่รองรับ
+                alert("ระบบจะดาวน์โหลดเป็น ZIP แทนเนื่องจากเครื่องไม่รองรับการแชร์โดยตรง");
+                const zip = new JSZip();
+                preparedFiles.forEach(f => zip.file(f.name, f));
+                const content = await zip.generateAsync({type:"blob"});
+                saveAs(content, "Menu_Images.zip");
+                closeProcessing();
+                exitSelectMode();
             }
         }
+
+        function closeProcessing() {
+            document.getElementById('processingModal').classList.add('hidden');
+        }
+
     </script>
 </body>
 </html>
