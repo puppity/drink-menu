@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <title>เมนูเครื่องดื่ม - ชาพระนคร</title>
-    <meta property="og:title" content="เมนูเครื่องดื่ม - ชาพระนคร" />
-    <meta property="og:description" content="กดเพื่อดูเมนูเครื่องดื่มทั้งหมด และบันทึกรูปลงเครื่องได้" />
-    <meta property="og:image" content="https://scontent.fbkk24-1.fna.fbcdn.net/v/t39.30808-6/490758387_664612383000647_2821227514119197473_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=cc71e4&_nc_aid=0&_nc_ohc=hJMdfRYFxpAQ7kNvwEPJhJP&_nc_oc=AdlR3CK_gWu2OgNYAtPEbLZ4Sml59ARfq7r_eGOHWgOelwvpXlRcHvGkzbc82MBh7sD28YErDUf_UiOvsUZYAFWt&_nc_zt=23&_nc_ht=scontent.fbkk24-1.fna&_nc_gid=Fq10goPKkak4YKB-O7S58Q&oh=00_AfoQLaDta9-yJHVfB6Y354wfI10lGzbWF3KBPiyWmMyJ2Q&oe=69795402" />
-    <meta property="og:url" content="https://chaphranakhon-menu.onrender.comm" />
-    <meta property="og:type" content="website" />
-    
-    <meta name="twitter:card" content="summary_large_image">
+    <title>เมนูเครื่องดื่มชาพระนคร</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta property="og:title" content="เมนูเครื่องดื่ม - ชาพระนคร" />
+    <meta property="og:description" content="คลิกเพื่อดูเมนูทั้งหมด และบันทึกรูปลงเครื่องได้ทันที" />
+    <meta property="og:image" content="https://res.cloudinary.com/dii8jq2zm/image/upload/v1769175027/616942917_884276064367610_2902772526457452481_n_so770k.jpg" />
+    <meta property="og:type" content="website" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -41,7 +40,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ปุ่มเขียวเต้นตุบๆ ให้รู้ว่ากดได้ */
+        /* Pulse Button Animation */
         .pulse-btn { animation: pulse 2s infinite; }
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
@@ -82,7 +81,6 @@
     </div>
 
     <div id="processingModal" class="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center hidden p-6 fade-in">
-        
         <div id="stateLoading" class="text-center w-full max-w-sm">
             <div class="loader mb-6"></div>
             <h3 class="text-xl font-bold text-gray-800 mb-2">กำลังเตรียมรูปภาพ...</h3>
@@ -109,11 +107,10 @@
         </div>
     </div>
 
-
-    <div class="max-w-xl mx-auto relative">
+    <div class="max-w-7xl mx-auto relative"> 
         <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 pt-4">☕ คลังรูปเมนูชาพระนคร</h1>
 
-        <div class="flex border-b border-gray-200 mb-4 sticky top-0 bg-gray-50 z-20 pt-2 transition-all" id="topBar">
+        <div class="flex border-b border-gray-200 mb-4 sticky top-0 bg-gray-50 z-20 pt-2 transition-all max-w-xl mx-auto" id="topBar">
             <button onclick="switchTab('watermark')" id="btn-watermark" class="flex-1 pb-3 text-center transition tab-active">
                 แบบมีชื่อเมนูติดที่รูป
             </button>
@@ -122,32 +119,39 @@
             </button>
         </div>
 
-        <div class="flex justify-between items-center mb-4 gap-2">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
             <input type="text" id="searchInput" onkeyup="filterImages()" 
                    placeholder="🔍 ค้นหาเมนู..." 
-                   class="flex-1 p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                   class="w-full md:w-1/3 p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
             
+            <div class="hidden lg:flex gap-3 w-full md:w-auto">
+                <button onclick="downloadZipCurrentTab()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-blue-700 transition flex items-center gap-2">
+                    📥 ดาวน์โหลดหน้านี้ทั้งหมด (ZIP)
+                </button>
+            </div>
+
             <button onclick="enterSelectMode()" id="enableSelectBtn"
-                    class="bg-gray-800 text-white px-4 py-3 rounded-xl font-bold text-sm shadow hover:bg-gray-900 active:scale-95 transition whitespace-nowrap flex items-center gap-2">
+                    class="lg:hidden w-full md:w-auto bg-gray-800 text-white px-4 py-3 rounded-xl font-bold text-sm shadow hover:bg-gray-900 active:scale-95 transition flex items-center justify-center gap-2">
                 <span>☑️</span> เลือกหลายรูป
             </button>
         </div>
 
         <div id="content-watermark">
-            <div id="grid-watermark" class="grid grid-cols-2 gap-3 image-grid">
+            <div id="grid-watermark" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
                 {% for img in wm_images %}
-                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300 hover:shadow-md">
                     <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" 
                                data-name="{{ img['public_id'].split('/')[-1] }}"
                                onclick="event.stopPropagation(); updateCount();"
                                class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
-                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    
+                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 lg:h-48 object-cover rounded-lg mb-2 bg-gray-200">
                     <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
-                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-blue-50 text-blue-600 text-center py-1.5 rounded-lg text-xs font-bold">
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-blue-50 text-blue-600 text-center py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100">
                         ดูรูปใหญ่
                     </a>
                 </div>
@@ -156,20 +160,21 @@
         </div>
 
         <div id="content-clean" class="hidden">
-            <div id="grid-clean" class="grid grid-cols-2 gap-3 image-grid">
+            <div id="grid-clean" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
                 {% for img in cl_images %}
-                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300 hover:shadow-md">
                     <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" 
                                data-name="{{ img['public_id'].split('/')[-1] }}"
                                onclick="event.stopPropagation(); updateCount();"
                                class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
-                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    
+                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 lg:h-48 object-cover rounded-lg mb-2 bg-gray-200">
                     <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
-                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-green-50 text-green-600 text-center py-1.5 rounded-lg text-xs font-bold">
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-green-50 text-green-600 text-center py-1.5 rounded-lg text-xs font-bold hover:bg-green-100">
                         ดูรูปใหญ่
                     </a>
                 </div>
@@ -178,7 +183,7 @@
         </div>
     </div>
 
-    <div id="selectionBar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up rounded-t-2xl">
+    <div id="selectionBar" class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up rounded-t-2xl">
         <div class="max-w-xl mx-auto">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-gray-500 font-bold text-sm" id="selectionStatus">เลือกแล้ว 0 รูป</span>
@@ -196,23 +201,25 @@
     </div>
 
     <script>
-        // 1. ตอนโหลดหน้าเว็บ: โชว์วิธีใช้รูปเดียว
+        // --- 🛠️ ส่วนตรวจสอบอุปกรณ์ (Device Detection) ---
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
         window.onload = function() {
-            // เช็คว่าเคยปิดไปหรือยัง (ถ้าอยากให้โชว์ทุกครั้งให้ลบ if นี้ออก)
-            // if (!localStorage.getItem('sawTutorial')) {
+            // ถ้าเป็นมือถือ/แท็บเล็ต ให้โชว์ Tutorial ตอนเข้าเว็บ
+            if (isTouchDevice) {
                 document.getElementById('tutorialSingle').classList.remove('hidden');
-            // }
+            }
         }
 
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
-            // localStorage.setItem('sawTutorial', 'true');
         }
 
         let currentTab = 'watermark';
         let isSelectMode = false;
         let preparedFiles = [];
 
+        // --- ส่วนจัดการ Tabs ---
         function switchTab(tab) {
             currentTab = tab;
             if(isSelectMode) exitSelectMode();
@@ -236,18 +243,48 @@
             }
         }
 
-        // --- Select Mode Logic ---
+        // --- 🖥️ ฟังก์ชันโหลด ZIP (สำหรับ PC) ---
+        async function downloadZipCurrentTab() {
+            let activeGridId = currentTab === 'watermark' ? 'grid-watermark' : 'grid-clean';
+            let cards = Array.from(document.getElementById(activeGridId).getElementsByClassName('image-card'))
+                             .filter(c => c.style.display !== 'none');
+            
+            if(cards.length === 0) return alert("ไม่พบรูปภาพ");
+            
+            if(!confirm(`ต้องการดาวน์โหลด ${cards.length} รูป เป็นไฟล์ ZIP ใช่หรือไม่?`)) return;
+
+            const zip = new JSZip();
+            const oldText = event.target.innerText;
+            event.target.innerText = "⏳ กำลังบีบอัด...";
+            event.target.disabled = true;
+
+            try {
+                for (let card of cards) {
+                    let img = card.querySelector('img');
+                    let name = card.querySelector('.name-label').innerText.trim() + ".jpg";
+                    let res = await fetch(img.src);
+                    let blob = await res.blob();
+                    zip.file(name, blob);
+                }
+                let content = await zip.generateAsync({type:"blob"});
+                let zipName = currentTab === 'watermark' ? 'Menu_Watermarked.zip' : 'Menu_Original.zip';
+                saveAs(content, zipName);
+            } catch(e) {
+                alert("เกิดข้อผิดพลาด: " + e.message);
+            } finally {
+                event.target.innerText = oldText;
+                event.target.disabled = false;
+            }
+        }
+
+        // --- 📱 ฟังก์ชันเลือกรูป (สำหรับ Mobile) ---
         function enterSelectMode() {
             isSelectMode = true;
-            document.getElementById('tutorialMulti').classList.remove('hidden'); // โชว์สอนวิธีใช้แบบหลายรูป
-            
+            document.getElementById('tutorialMulti').classList.remove('hidden');
             document.querySelectorAll('.selection-overlay').forEach(el => el.classList.remove('hidden'));
             document.querySelectorAll('.view-btn').forEach(btn => btn.classList.add('opacity-30', 'pointer-events-none'));
-            
             document.getElementById('selectionBar').classList.remove('hidden');
             document.getElementById('enableSelectBtn').classList.add('hidden');
-            
-            // ปรับระยะด้านล่างไม่ให้บาร์บัง
             document.body.classList.add('pb-40');
         }
 
@@ -255,10 +292,8 @@
             isSelectMode = false;
             document.querySelectorAll('.selection-overlay').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('opacity-30', 'pointer-events-none'));
-            
             document.getElementById('selectionBar').classList.add('hidden');
             document.getElementById('enableSelectBtn').classList.remove('hidden');
-            
             document.body.classList.remove('pb-40');
             uncheckAll();
         }
@@ -301,15 +336,13 @@
             }
         }
 
-        // --- 🔥 Flow การโหลดแบบใหม่ (ใช้ Overlay บัง) ---
-        
+        // --- 🔥 Flow การโหลดแบบ Overlay (เนียนตา) ---
         async function startProcessing() {
             const checkboxes = getActiveCheckboxes();
             let targets = checkboxes.filter(cb => cb.checked);
             
             if (targets.length === 0) return;
 
-            // 1. เปิด Modal บังหน้าจอ
             const modal = document.getElementById('processingModal');
             const loadingState = document.getElementById('stateLoading');
             const readyState = document.getElementById('stateReady');
@@ -323,16 +356,16 @@
             
             preparedFiles = [];
             
-            // 2. เริ่มโหลดไฟล์
             try {
                 for (let i = 0; i < targets.length; i++) {
                     const cb = targets[i];
-                    // อัปเดต UI
+                    // Update UI
                     const percent = Math.round(((i + 1) / targets.length) * 100);
                     progressBar.style.width = percent + '%';
                     progressText.innerText = `${i + 1} / ${targets.length}`;
 
-                    const url = cb.value + "?t=" + new Date().getTime(); // กัน Cache
+                    // Fetch Image
+                    const url = cb.value + "?t=" + new Date().getTime(); // Anti-cache
                     const name = cb.getAttribute('data-name') + ".jpg";
                     
                     const res = await fetch(url);
@@ -341,13 +374,12 @@
                     preparedFiles.push(file);
                 }
 
-                // 3. โหลดเสร็จแล้ว -> เปลี่ยนหน้าเป็นปุ่มสีเขียว
+                // โหลดเสร็จแล้ว -> โชว์ปุ่มเขียว
                 setTimeout(() => {
                     loadingState.classList.add('hidden');
                     readyState.classList.remove('hidden');
-                    // ใส่ Animation เด้งขึ้นมา
                     readyState.classList.add('fade-in');
-                }, 500); // หน่วงนิดนึงให้รู้สึก Smooth
+                }, 500);
 
             } catch (error) {
                 alert("เกิดข้อผิดพลาดในการเตรียมไฟล์");
@@ -355,7 +387,6 @@
             }
         }
 
-        // จังหวะสุดท้าย: กดปุ่มเขียวเพื่อแชร์
         async function triggerShare() {
             if (preparedFiles.length > 0 && navigator.canShare && navigator.canShare({ files: preparedFiles })) {
                 try {
@@ -364,19 +395,18 @@
                         title: 'รูปเมนู',
                         text: 'รูปเมนูครับ'
                     });
-                    // แชร์เสร็จแล้วปิดทุกอย่าง
                     closeProcessing();
                     exitSelectMode();
                 } catch (error) {
                     console.log("Share failed:", error);
                 }
             } else {
-                // Fallback สำหรับ PC หรือเครื่องที่ไม่รองรับ
-                alert("ระบบจะดาวน์โหลดเป็น ZIP แทนเนื่องจากเครื่องไม่รองรับการแชร์โดยตรง");
+                // Fallback for non-supported devices
+                alert("อุปกรณ์นี้ไม่รองรับการส่งตรง ระบบจะโหลดเป็น ZIP แทน");
                 const zip = new JSZip();
                 preparedFiles.forEach(f => zip.file(f.name, f));
                 const content = await zip.generateAsync({type:"blob"});
-                saveAs(content, "Menu_Images.zip");
+                saveAs(content, "Menu.zip");
                 closeProcessing();
                 exitSelectMode();
             }
@@ -385,8 +415,6 @@
         function closeProcessing() {
             document.getElementById('processingModal').classList.add('hidden');
         }
-
     </script>
 </body>
 </html>
-
