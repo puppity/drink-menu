@@ -3,7 +3,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
-from PIL import Image, ImageDraw, ImageFont # เพิ่ม ImageDraw, ImageFont
+from PIL import Image
 import io
 
 app = Flask(__name__)
@@ -17,32 +17,6 @@ cloudinary.config(
     api_secret = os.environ.get('CLOUD_API_SECRET'),
     secure = True
 )
-
-# ฟังก์ชันช่วยวาดลายน้ำ
-def add_watermark(image, text="Cha Phranakhon"):
-    draw = ImageDraw.Draw(image)
-    w, h = image.size
-    
-    # พยายามโหลดฟอนต์ (ถ้าไม่มีจะใช้ฟอนต์ Default)
-    try:
-        # บน Render อาจไม่มี Arial ให้ใช้ Default หรืออัปโหลดไฟล์ .ttf ใส่โปรเจกต์
-        font = ImageFont.load_default() 
-        # หมายเหตุ: ฟอนต์ Default ปรับขนาดไม่ได้ในบางเวอร์ชัน 
-        # ถ้าอยากได้สวยๆ ต้องหาไฟล์ font.ttf มาใส่ในโฟลเดอร์
-    except:
-        font = ImageFont.load_default()
-
-    # คำนวณตำแหน่ง (มุมขวาล่าง)
-    # เนื่องจากใช้ font default การคำนวณอาจไม่เป๊ะมากนัก
-    x = w - 150 
-    y = h - 50
-
-    # วาดพื้นหลังดำจางๆ รองข้อความ
-    draw.rectangle([(x-10, y-10), (w, h)], fill=(0,0,0,128))
-    # เขียนข้อความสีขาว
-    draw.text((x, y), text, fill=(255, 255, 255), font=font)
-    
-    return image
 
 @app.route('/')
 def index():
@@ -88,46 +62,53 @@ def admin():
         for i, file in enumerate(files):
             if file:
                 try:
-                    # ตั้งชื่อ
+                    # ตั้งชื่อไฟล์
                     if custom_name:
                         final_name = f"{custom_name}_{i+1}" if len(files) > 1 else custom_name
                     else:
                         final_name = os.path.splitext(file.filename)[0]
 
-                    # เปิดรูป
+                    # --- ขั้นตอนการย่อรูป (เพื่อไม่ให้ Server ล่ม) ---
                     img = Image.open(file)
-                    if img.mode != 'RGB': img = img.convert('RGB')
                     
-                    # ย่อรูป
+                    # แปลงเป็น RGB เสมอ
+                    if img.mode != 'RGB': 
+                        img = img.convert('RGB')
+                    
+                    # 1. ย่อแบบหยาบก่อน (Draft) เพื่อลดการกิน RAM ทันทีที่เปิดไฟล์
+                    img.draft('RGB', (2048, 2048)) 
+                    
+                    # 2. ย่อจริงจังอีกทีไม่ให้เกิน 2048px (ชัดระดับ HD)
                     if img.width > 2048 or img.height > 2048: 
                         img.thumbnail((2048, 2048))
 
-                    # --- แยกตรรกะตามประเภทที่เลือก ---
+                    # --- เลือกโฟลเดอร์ปลายทาง (ไม่มีการวาดลายน้ำแล้ว) ---
                     if upload_type == 'watermarked':
                         folder = "menu/watermarked"
-                        # แปะลายน้ำ
-                        img = add_watermark(img)
                     else:
                         folder = "menu/clean"
-                        # ไม่แปะลายน้ำ (Original)
 
-                    # Save ลง RAM
+                    # เตรียมไฟล์ส่งขึ้น Cloud
                     img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='JPEG', quality=85)
+                    img.save(img_byte_arr, format='JPEG', quality=85) # บีบอัดเหลือ 85%
                     img_byte_arr.seek(0)
                     
                     # Upload
                     cloudinary.uploader.upload(img_byte_arr, public_id=f"{folder}/{final_name}")
                     uploaded_count += 1
+                    
+                    # คืนหน่วยความจำ
+                    img.close()
+
                 except Exception as e:
-                    print(f"Error: {e}")
+                    print(f"Error uploading {file.filename}: {e}")
 
         if uploaded_count > 0:
             flash(f'✅ อัปโหลดเข้าโซน "{upload_type}" เรียบร้อย {uploaded_count} รูป!')
         
         return redirect(url_for('admin'))
 
-    # ดึงข้อมูลมาโชว์ในตารางลบ (รวมทั้ง 2 แบบ)
+    # ส่วนแสดงรายการรูปล่างสุด (สำหรับลบ)
     try:
         res_wm = cloudinary.api.resources(type="upload", prefix="menu/watermarked/", max_results=50)
         res_cl = cloudinary.api.resources(type="upload", prefix="menu/clean/", max_results=50)
