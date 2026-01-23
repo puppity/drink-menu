@@ -1,48 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Admin - จัดการเมนู</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 p-5">
-    <div class="max-w-2xl mx-auto">
+<body class="bg-gray-100 p-5 font-sans">
+    <div class="max-w-3xl mx-auto">
         
-        <div class="bg-white p-6 rounded-lg shadow mb-8">
-            <h1 class="text-xl font-bold mb-4">📤 อัปโหลดเมนู</h1>
-            
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="bg-blue-100 text-blue-800 p-3 rounded mb-4 text-sm">{{ messages[0] }}</div>
-                {% endif %}
-            {% endwith %}
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">⚙️ จัดการรูปภาพ</h1>
+            <a href="/" class="text-blue-600 underline text-sm">กลับหน้าหลัก</a>
+        </div>
 
-            <form method="POST" enctype="multipart/form-data">
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-lg font-bold mb-4 border-b pb-2">📤 อัปโหลดแบบคิว </h2>
+            
+            <div id="uploadForm">
                 <div class="mb-4 bg-gray-50 p-3 rounded border">
                     <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซนรูปภาพ:</label>
                     <div class="flex gap-4">
                         <label class="flex items-center cursor-pointer">
                             <input type="radio" name="type" value="watermarked" checked class="w-4 h-4 text-blue-600">
-                            <span class="ml-2 text-sm">มีชื่อเมนูในภาพ</span>
+                            <span class="ml-2 text-sm">แบบมีชื่อเมนูติดที่รูป</span>
                         </label>
                         <label class="flex items-center cursor-pointer">
                             <input type="radio" name="type" value="clean" class="w-4 h-4 text-blue-600">
-                            <span class="ml-2 text-sm">ไม่มีชื่อเมนูในภาพ</span>
+                            <span class="ml-2 text-sm">แบบไม่มีชื่อเมนูติดที่รูป</span>
                         </label>
                     </div>
                 </div>
 
-                <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
-                <input type="text" name="name" class="w-full p-2 border rounded mb-2" placeholder="ถ้าเว้นว่าง จะใช้ชื่อไฟล์เดิม">
-                
-                <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ:</label>
-                <input type="file" name="file" required multiple accept="image/*" class="w-full mb-6">
-                
-                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow">อัปโหลดทันที</button>
-            </form>
-            <a href="/" class="block text-center mt-4 text-gray-500 underline text-sm">ไปดูหน้าเว็บจริง</a>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
+                        <input type="text" id="customName" class="w-full p-2 border rounded" placeholder="เช่น ชาเขียว (ถ้าไม่ใส่จะใช้ชื่อเดิม)">
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ (เลือกทีละ 100 รูปได้เลย):</label>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="w-full p-2 border rounded bg-gray-50">
+                    </div>
+                </div>
+
+                <button onclick="startQueueUpload()" id="startBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow transition">
+                    🚀 เริ่มอัปโหลด (จัดคิวอัตโนมัติ)
+                </button>
+            </div>
+
+            <div id="progressArea" class="hidden mt-6">
+                <div class="flex justify-between text-sm font-bold mb-1">
+                    <span id="statusText">กำลังอัปโหลด...</span>
+                    <span id="percentText">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4 mb-4 overflow-hidden">
+                    <div id="progressBar" class="bg-green-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+
+                <div id="logArea" class="h-40 overflow-y-auto bg-gray-900 text-green-400 p-3 rounded text-xs font-mono border border-gray-700">
+                    <p class="text-gray-500">Waiting to start...</p>
+                </div>
+            </div>
         </div>
 
-        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รูปภาพทั้งหมดในระบบ</h2>
+        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รูปภาพล่าสุดในระบบ</h2>
         <div class="bg-white rounded-lg shadow overflow-hidden">
             {% for img in images %}
             <div class="flex items-center justify-between p-3 border-b hover:bg-gray-50">
@@ -53,11 +73,7 @@
                             {{ img['public_id'].split('/')[-1] }}
                         </span>
                         <span class="text-xs text-gray-400">
-                            {% if 'watermarked' in img['public_id'] %} 
-                                💧 มีลายน้ำ 
-                            {% else %} 
-                                ✨ ไม่มีลายน้ำ 
-                            {% endif %}
+                            {{ '💧 ลายน้ำ' if 'watermarked' in img['public_id'] else '✨ ต้นฉบับ' }}
                         </span>
                     </div>
                 </div>
@@ -70,5 +86,116 @@
             {% endfor %}
         </div>
     </div>
+
+    <script>
+        let fileQueue = [];
+        let totalFiles = 0;
+        let successCount = 0;
+        let failCount = 0;
+        let isUploading = false;
+        
+        // 🔥 Config: จำนวนรูปที่จะส่งไปพร้อมกัน (2 รูปกำลังดีสำหรับ Server ฟรี)
+        const CONCURRENCY_LIMIT = 2; 
+        let activeUploads = 0;
+
+        function log(msg, type='info') {
+            const area = document.getElementById('logArea');
+            const color = type === 'error' ? 'text-red-400' : 'text-green-400';
+            area.innerHTML += `<div class="${color}">> ${msg}</div>`;
+            area.scrollTop = area.scrollHeight; // Auto scroll
+        }
+
+        function startQueueUpload() {
+            const files = document.getElementById('fileInput').files;
+            if (files.length === 0) return alert("กรุณาเลือกไฟล์ก่อนครับ");
+
+            // เตรียมหน้าจอ
+            document.getElementById('uploadForm').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('progressArea').classList.remove('hidden');
+            document.getElementById('logArea').innerHTML = ''; // Clear log
+
+            // สร้างคิว
+            fileQueue = Array.from(files);
+            totalFiles = fileQueue.length;
+            successCount = 0;
+            failCount = 0;
+            
+            log(`เริ่มระบบคิว... มีทั้งหมด ${totalFiles} รูป`);
+            log(`จะทยอยส่งทีละ ${CONCURRENCY_LIMIT} รูป เพื่อถนอม Server`);
+
+            // เริ่มปล่อย Worker ออกไปทำงานตามจำนวน Limit
+            for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
+                processNextInQueue();
+            }
+        }
+
+        function processNextInQueue() {
+            // ถ้าคิวหมดแล้ว และไม่มีงานค้าง -> จบ
+            if (fileQueue.length === 0 && activeUploads === 0) {
+                finishUpload();
+                return;
+            }
+
+            // ถ้าคิวหมด แต่ยังมีเพื่อนทำงานอยู่ -> รอเพื่อนจบ
+            if (fileQueue.length === 0) return;
+
+            // ดึงงานออกจากคิว
+            const file = fileQueue.shift();
+            const index = totalFiles - fileQueue.length; // ลำดับรูป
+            activeUploads++;
+
+            uploadSingleFile(file, index).then(() => {
+                activeUploads--;
+                updateProgress();
+                processNextInQueue(); // ทำงานเสร็จแล้ว ไปหยิบงานต่อไปทำ
+            });
+        }
+
+        async function uploadSingleFile(file, index) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', document.querySelector('input[name="type"]:checked').value);
+            formData.append('name', document.getElementById('customName').value);
+            formData.append('index', index);
+
+            try {
+                log(`กำลังส่ง: ${file.name}...`);
+                
+                const response = await fetch('/upload_api', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    successCount++;
+                    log(`✅ เสร็จสิ้น: ${result.file}`);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                failCount++;
+                log(`❌ ผิดพลาด (${file.name}): ${error.message}`, 'error');
+            }
+        }
+
+        function updateProgress() {
+            const processed = successCount + failCount;
+            const percent = Math.round((processed / totalFiles) * 100);
+            
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('percentText').innerText = percent + '%';
+            document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount} (จาก ${totalFiles})`;
+        }
+
+        function finishUpload() {
+            document.getElementById('progressBar').classList.replace('bg-green-500', 'bg-blue-500');
+            log('🎉 อัปโหลดครบทุกไฟล์แล้ว! กำลังรีเฟรช...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    </script>
 </body>
 </html>
