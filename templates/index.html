@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <title>เมนูเครื่องดื่ม</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4 font-sans">
+    <div class="max-w-xl mx-auto">
+        <div class="sticky top-0 bg-gray-50 pt-2 pb-4 z-10">
+            <h1 class="text-xl font-bold mb-3 text-center text-gray-800">☕ คลังภาพเครื่องดื่ม</h1>
+            <input type="text" id="searchInput" onkeyup="filterImages()" 
+                   placeholder="พิมพ์ชื่อเมนู เช่น ชาเขียว..." 
+                   class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="mb-6 text-center">
+            <button onclick="shareAllImages()" id="shareBtn"
+                    class="bg-green-600 text-white w-full py-3 rounded-xl font-bold shadow-lg active:scale-95 transition flex justify-center items-center gap-2">
+                📲 บันทึกรูป (ที่ค้นหา) ลงเครื่อง
+            </button>
+            <p class="text-xs text-gray-500 mt-2">*ใช้ Safari (iPhone) หรือ Chrome (Android) เพื่อบันทึกรูป</p>
+        </div>
+
+        <div id="imageGrid" class="grid grid-cols-2 gap-3">
+            {% for img in images %}
+            <div class="image-card bg-white p-2 rounded-lg shadow border border-gray-100">
+                <img src="/static/images/{{ img }}" class="w-full h-40 object-cover rounded-md mb-2 bg-gray-200" loading="lazy">
+                <p class="text-sm font-bold text-gray-700 truncate mb-2 name-label">{{ img.split('.')[0] }}</p>
+                <a href="/static/images/{{ img }}" download class="block w-full bg-blue-50 text-blue-600 text-center py-1 rounded text-xs font-semibold border border-blue-200">โหลดรูปนี้</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function filterImages() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let cards = document.getElementsByClassName('image-card');
+            for (let i = 0; i < cards.length; i++) {
+                let name = cards[i].querySelector('.name-label').innerText.toLowerCase();
+                cards[i].style.display = name.includes(input) ? "" : "none";
+            }
+        }
+
+        async function shareAllImages() {
+            const btn = document.getElementById('shareBtn');
+            const originalText = btn.innerHTML;
+            
+            if (!navigator.share || !navigator.canShare) {
+                alert("เบราว์เซอร์นี้ไม่รองรับการแชร์หลายไฟล์ กรุณาใช้ Safari หรือ Chrome บนมือถือ"); return;
+            }
+
+            try {
+                btn.innerHTML = "⏳ กำลังเตรียมรูปภาพ...";
+                btn.disabled = true;
+                const visibleCards = Array.from(document.querySelectorAll('.image-card')).filter(c => c.style.display !== 'none');
+                
+                if(visibleCards.length === 0) { alert("ไม่มีรูปภาพให้บันทึก"); return; }
+
+                const filesArray = [];
+                for (let card of visibleCards) {
+                    const imgUrl = card.querySelector('img').src;
+                    const fileName = card.querySelector('.name-label').innerText + ".jpg";
+                    const response = await fetch(imgUrl);
+                    const blob = await response.blob();
+                    filesArray.push(new File([blob], fileName, { type: blob.type }));
+                }
+
+                if (navigator.canShare({ files: filesArray })) {
+                    await navigator.share({ files: filesArray, title: 'รูปเมนู', text: 'รูปเมนูทั้งหมดครับ' });
+                }
+            } catch (error) { console.log(error); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>
