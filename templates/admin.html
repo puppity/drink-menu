@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-5">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 class="text-xl font-bold mb-4">📤 อัปโหลดเมนูใหม่</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="bg-green-100 text-green-700 p-2 rounded mb-4">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" enctype="multipart/form-data">
+            <label class="block mb-2 text-sm font-bold">ชื่อเมนู (ภาษาไทยได้):</label>
+            <input type="text" name="name" required class="w-full p-2 border rounded mb-4" placeholder="เช่น ชาไทยเย็น">
+            
+            <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ:</label>
+            <input type="file" name="file" required accept="image/*" class="w-full mb-6">
+            
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">อัปโหลดทันที</button>
+        </form>
+        
+        <a href="/" class="block text-center mt-4 text-gray-500 underline">กลับหน้าหลัก</a>
+    </div>
+</body>
+</html>
