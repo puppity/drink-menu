@@ -4,116 +4,148 @@
     <title>เมนูเครื่องดื่มชาพระนคร</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
         .tab-inactive { color: #6b7280; }
         
-        /* Animation สำหรับ Popup */
-        @keyframes popupFadeIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .popup-animate {
-            animation: popupFadeIn 0.3s ease-out forwards;
-        }
+        /* Animation */
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .slide-up { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Checkbox ใหญ่ๆ */
+        .custom-checkbox { width: 28px; height: 28px; cursor: pointer; accent-color: #2563eb; }
     </style>
 </head>
-<body class="bg-gray-50 p-4 font-sans text-gray-800">
-
-    <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center popup-animate">
-            <div class="text-5xl mb-4">📲</div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">เคล็ดลับการบันทึกรูป</h3>
-            <p class="text-gray-600 mb-6 text-sm leading-relaxed">
-                สำหรับโทรศัพท์มือถือ<br>
-                ท่านสามารถ <b>"กดค้างที่รูปภาพ"</b><br>
-                แล้วเลือกเมนู <b>"บันทึกรูปภาพ"</b> ได้เลยครับ
-            </p>
+<body class="bg-gray-50 p-4 font-sans text-gray-800 pb-24"> <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center hidden p-4 fade-in">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <div class="text-5xl mb-4">💡</div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">วิธีบันทึกรูป</h3>
+            <div class="text-gray-600 mb-6 text-sm leading-relaxed text-left bg-gray-50 p-4 rounded-xl border">
+                <p class="mb-2"><b>วิธีที่ 1 (รูปเดียว):</b><br>กดค้างที่รูป แล้วกด "บันทึกภาพ"</p>
+                <hr class="border-gray-200 my-2">
+                <p><b>วิธีที่ 2 (หลายรูป):</b><br>กดปุ่ม <b>"เลือกหลายรูป"</b> ด้านบน<br>แล้วติ๊กเลือกรูปที่ต้องการได้เลย</p>
+            </div>
             <button onclick="closeModal()" class="bg-blue-600 text-white w-full py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg active:scale-95 transition">
-                รับทราบ / ตกลง
+                เข้าใจแล้ว
             </button>
         </div>
     </div>
-    <div class="max-w-xl mx-auto">
+
+    <div class="max-w-xl mx-auto relative">
         <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 pt-4">☕ คลังรูปเมนูชาพระนคร</h1>
 
-        <div class="flex border-b border-gray-200 mb-6 sticky top-0 bg-gray-50 z-20 pt-2">
+        <div class="flex border-b border-gray-200 mb-4 sticky top-0 bg-gray-50 z-20 pt-2 transition-all" id="topBar">
             <button onclick="switchTab('watermark')" id="btn-watermark" class="flex-1 pb-3 text-center transition tab-active">
-                แบบมีชื่อเครื่องดื่มในรูป
+                แบบมีชื่อเมนูติดที่รูป
             </button>
             <button onclick="switchTab('clean')" id="btn-clean" class="flex-1 pb-3 text-center transition tab-inactive">
-                แบบไม่มีชื่อเครื่องดื่มในรูป
+                แบบไม่มีชื่อเมนูติดที่รูป
             </button>
         </div>
 
-        <div class="mb-4">
+        <div class="flex justify-between items-center mb-4">
             <input type="text" id="searchInput" onkeyup="filterImages()" 
-                   placeholder="🔍 ค้นหาชื่อเมนู..." 
-                   class="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                   placeholder="🔍 ค้นหาเมนู..." 
+                   class="flex-1 p-2.5 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white mr-2">
+            
+            <button onclick="toggleSelectMode(true)" id="enableSelectBtn"
+                    class="bg-gray-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-gray-900 active:scale-95 transition whitespace-nowrap">
+                ☑️ เลือกหลายรูป
+            </button>
         </div>
 
         <div id="content-watermark">
-            <div id="grid-watermark" class="grid grid-cols-2 gap-4 pb-10 image-grid">
+            <div id="grid-watermark" class="grid grid-cols-2 gap-3 image-grid">
                 {% for img in wm_images %}
-                <div class="image-card bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                    <img src="{{ img['secure_url'] }}" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
-                    <p class="text-sm font-bold text-gray-800 truncate mb-2 name-label text-center">
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
+                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-10 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                        <input type="checkbox" value="{{ img['secure_url'] }}" 
+                               data-name="{{ img['public_id'].split('/')[-1] }}"
+                               onclick="event.stopPropagation(); updateCount();"
+                               class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
+                    </div>
+
+                    <img src="{{ img['secure_url'] }}" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
-                    <a href="{{ img['secure_url'] }}" target="_blank" class="block w-full bg-blue-50 text-blue-600 text-center py-2 rounded-lg text-xs font-bold">
-                        แตะเพื่อดูรูปใหญ่
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-blue-50 text-blue-600 text-center py-1.5 rounded-lg text-xs font-bold">
+                        ดูรูปใหญ่
                     </a>
                 </div>
                 {% endfor %}
-                {% if wm_images|length == 0 %} <p class="col-span-2 text-center text-gray-400 mt-10">ยังไม่มีรูปในโซนนี้</p> {% endif %}
             </div>
         </div>
 
         <div id="content-clean" class="hidden">
-            <div id="grid-clean" class="grid grid-cols-2 gap-4 pb-10 image-grid">
+            <div id="grid-clean" class="grid grid-cols-2 gap-3 image-grid">
                 {% for img in cl_images %}
-                <div class="image-card bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                    <img src="{{ img['secure_url'] }}" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
-                    <p class="text-sm font-bold text-gray-800 truncate mb-2 name-label text-center">
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300">
+                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-10 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                        <input type="checkbox" value="{{ img['secure_url'] }}" 
+                               data-name="{{ img['public_id'].split('/')[-1] }}"
+                               onclick="event.stopPropagation(); updateCount();"
+                               class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
+                    </div>
+
+                    <img src="{{ img['secure_url'] }}" crossorigin="anonymous" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">
                         {{ img['public_id'].split('/')[-1] }}
                     </p>
-                    <a href="{{ img['secure_url'] }}" target="_blank" class="block w-full bg-green-50 text-green-600 text-center py-2 rounded-lg text-xs font-bold">
-                        แตะเพื่อดูรูปใหญ่
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-green-50 text-green-600 text-center py-1.5 rounded-lg text-xs font-bold">
+                        ดูรูปใหญ่
                     </a>
                 </div>
                 {% endfor %}
-                {% if cl_images|length == 0 %} <p class="col-span-2 text-center text-gray-400 mt-10">ยังไม่มีรูปในโซนนี้</p> {% endif %}
             </div>
         </div>
     </div>
 
+    <div id="selectionBar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 z-40 hidden slide-up">
+        <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
+            <button onclick="toggleSelectMode(false)" class="bg-gray-200 text-gray-700 px-5 py-3 rounded-xl font-bold w-1/3 hover:bg-gray-300">
+                ยกเลิก
+            </button>
+            <button onclick="handleSaveImages()" id="actionBtn" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold w-2/3 shadow-lg hover:bg-blue-700 active:scale-95 transition flex items-center justify-center gap-2">
+                📲 ส่งเข้าเครื่อง <span id="count-badge" class="bg-white text-blue-600 text-xs px-2 py-0.5 rounded-full hidden">0</span>
+            </button>
+        </div>
+        <div class="text-center mt-2">
+            <label class="inline-flex items-center text-sm text-gray-500 font-medium">
+                <input type="checkbox" id="selectAllBtn" onchange="toggleSelectAll()" class="w-4 h-4 mr-2 rounded text-blue-600">
+                เลือกทั้งหมดในหน้านี้
+            </label>
+        </div>
+    </div>
+
     <script>
-        // 🔥 ส่วนที่ 2: Script ควบคุม Popup
-        window.onload = function() {
-            // สั่งให้ Popup แสดงขึ้นมาเมื่อโหลดหน้าเว็บเสร็จ
-            document.getElementById('infoModal').classList.remove('hidden');
-        }
+        window.onload = function() { document.getElementById('infoModal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('infoModal').classList.add('hidden'); }
 
-        function closeModal() {
-            // สั่งซ่อน Popup เมื่อกดปุ่ม
-            document.getElementById('infoModal').classList.add('hidden');
-        }
-
-        // Script เดิมสำหรับ Tabs และ Search
         let currentTab = 'watermark';
+        let isSelectMode = false;
 
+        // --- สลับแท็บ ---
         function switchTab(tab) {
             currentTab = tab;
+            // ถ้าสลับแท็บ ให้ปิดโหมดเลือกก่อน เพื่อกันงง
+            if(isSelectMode) toggleSelectMode(false);
+
             document.getElementById('content-watermark').classList.add('hidden');
             document.getElementById('content-clean').classList.add('hidden');
             document.getElementById('content-' + tab).classList.remove('hidden');
-
+            
             document.getElementById('btn-watermark').className = "flex-1 pb-3 text-center transition " + (tab === 'watermark' ? 'tab-active' : 'tab-inactive');
             document.getElementById('btn-clean').className = "flex-1 pb-3 text-center transition " + (tab === 'clean' ? 'tab-active' : 'tab-inactive');
             
-            document.getElementById('searchInput').value = '';
             filterImages(); 
         }
 
@@ -121,10 +153,138 @@
             let input = document.getElementById('searchInput').value.toLowerCase();
             let activeGridId = currentTab === 'watermark' ? 'grid-watermark' : 'grid-clean';
             let cards = document.getElementById(activeGridId).getElementsByClassName('image-card');
-
             for (let i = 0; i < cards.length; i++) {
                 let name = cards[i].querySelector('.name-label').innerText.toLowerCase();
                 cards[i].style.display = name.includes(input) ? "" : "none";
+            }
+        }
+
+        // --- 🔥 Logic โหมดเลือก ---
+        function toggleSelectMode(enable) {
+            isSelectMode = enable;
+            const overlays = document.querySelectorAll('.selection-overlay');
+            const viewBtns = document.querySelectorAll('.view-btn'); // ปุ่มดูรูปใหญ่
+            const selectBar = document.getElementById('selectionBar');
+            const enableBtn = document.getElementById('enableSelectBtn');
+
+            if (enable) {
+                // เข้าโหมดเลือก: โชว์ Checkbox, โชว์บาร์ล่าง, ซ่อนปุ่มเปิด
+                overlays.forEach(el => el.classList.remove('hidden'));
+                // ซ่อนปุ่ม "ดูรูปใหญ่" เพื่อไม่ให้เกะกะ
+                viewBtns.forEach(btn => btn.classList.add('opacity-50', 'pointer-events-none'));
+                
+                selectBar.classList.remove('hidden');
+                enableBtn.classList.add('hidden');
+                
+                // เปลี่ยนสีปุ่มตามแท็บ
+                const actionBtn = document.getElementById('actionBtn');
+                if (currentTab === 'watermark') {
+                    actionBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    actionBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    actionBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    actionBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                }
+            } else {
+                // ออกโหมดเลือก: ซ่อน Checkbox, ซ่อนบาร์ล่าง, เคลียร์ค่า
+                overlays.forEach(el => el.classList.add('hidden'));
+                viewBtns.forEach(btn => btn.classList.remove('opacity-50', 'pointer-events-none'));
+                
+                selectBar.classList.add('hidden');
+                enableBtn.classList.remove('hidden');
+                uncheckAll();
+            }
+        }
+
+        // ช่วยให้กดพื้นที่รอบๆ รูปเพื่อติ๊กได้
+        function toggleCheckbox(overlay) {
+            const checkbox = overlay.querySelector('input');
+            checkbox.checked = !checkbox.checked;
+            updateCount();
+        }
+
+        function getActiveCheckboxes() {
+            let activeGridId = currentTab === 'watermark' ? 'grid-watermark' : 'grid-clean';
+            return Array.from(document.getElementById(activeGridId).querySelectorAll('.img-checkbox'))
+                        .filter(cb => cb.closest('.image-card').style.display !== 'none');
+        }
+
+        function toggleSelectAll() {
+            const master = document.getElementById('selectAllBtn');
+            getActiveCheckboxes().forEach(cb => cb.checked = master.checked);
+            updateCount();
+        }
+
+        function uncheckAll() {
+            document.querySelectorAll('.img-checkbox').forEach(cb => cb.checked = false);
+            if(document.getElementById('selectAllBtn')) document.getElementById('selectAllBtn').checked = false;
+            updateCount();
+        }
+
+        function updateCount() {
+            const count = getActiveCheckboxes().filter(cb => cb.checked).length;
+            const badge = document.getElementById('count-badge');
+            
+            if (count > 0) {
+                badge.innerText = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // --- 📲 ฟังก์ชันส่งไฟล์ (Web Share API) ---
+        async function handleSaveImages() {
+            const checkboxes = getActiveCheckboxes();
+            let targets = checkboxes.filter(cb => cb.checked);
+            
+            if (targets.length === 0) {
+                alert("กรุณาติ๊กเลือกรูปอย่างน้อย 1 รูปครับ");
+                return;
+            }
+
+            const btn = document.getElementById('actionBtn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "⏳ กำลังเตรียม...";
+
+            try {
+                const filesArray = [];
+                for (let cb of targets) {
+                    const url = cb.value;
+                    const name = cb.getAttribute('data-name') + ".jpg";
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const file = new File([blob], name, { type: "image/jpeg" });
+                    filesArray.push(file);
+                }
+
+                if (navigator.canShare && navigator.canShare({ files: filesArray })) {
+                    await navigator.share({
+                        files: filesArray,
+                        title: 'รูปเมนู',
+                        text: 'รูปเมนูครับ'
+                    });
+                    // หลังจากแชร์เสร็จ ปิดโหมดเลือกเลยเพื่อความสวยงาม
+                    toggleSelectMode(false);
+                } else {
+                    alert("เครื่องนี้ไม่รองรับการส่งตรง ระบบจะโหลดเป็น ZIP ให้แทน");
+                    const zip = new JSZip();
+                    filesArray.forEach(f => zip.file(f.name, f));
+                    const content = await zip.generateAsync({type:"blob"});
+                    const zipName = currentTab === 'watermark' ? 'Menu_Watermark.zip' : 'Menu_Original.zip';
+                    saveAs(content, zipName);
+                    toggleSelectMode(false);
+                }
+
+            } catch (error) {
+                console.log("Error:", error);
+                if (!error.message.includes('abort')) {
+                    alert("เกิดข้อผิดพลาดในการส่งไฟล์");
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
             }
         }
     </script>
