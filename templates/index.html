@@ -5,152 +5,128 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ซ่อน Scrollbar เพื่อความสวยงาม */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .tab-inactive { color: #6b7280; }
+        
+        /* Animation สำหรับ Popup */
+        @keyframes popupFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .popup-animate {
+            animation: popupFadeIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="bg-gray-50 p-4 font-sans text-gray-800">
-    
-    <div class="max-w-xl mx-auto">
-        <div class="sticky top-0 bg-gray-50 pt-2 pb-4 z-20">
-            <h1 class="text-2xl font-bold mb-4 text-center text-gray-800">☕ คลังรูปเมนูเครื่องดื่มชาพระนคร</h1>
-            
-            <div class="relative">
-                <input type="text" id="searchInput" onkeyup="filterImages()" 
-                       placeholder="🔍 พิมพ์ชื่อเมนู เช่น ชาเขียว..." 
-                       class="w-full p-3 pl-10 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-            </div>
-        </div>
 
-        <div class="mb-6 text-center">
-            <button onclick="shareAllImages()" id="shareBtn"
-                    class="bg-green-600 hover:bg-green-700 text-white w-full py-3 rounded-xl font-bold shadow-lg active:scale-95 transition flex justify-center items-center gap-2">
-                📲 บันทึกรูป (ที่ค้นหา) ลงเครื่อง
-            </button>
-            <p class="text-xs text-gray-500 mt-2">
-                *กดค้างที่รูปแล้วเซฟ หรือ กดปุ่มโหลดลงเครื่องได้เลย 
+    <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center popup-animate">
+            <div class="text-5xl mb-4">📲</div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">เคล็ดลับการบันทึกรูป</h3>
+            <p class="text-gray-600 mb-6 text-sm leading-relaxed">
+                สำหรับโทรศัพท์มือถือ<br>
+                ท่านสามารถ <b>"กดค้างที่รูปภาพ"</b><br>
+                แล้วเลือกเมนู <b>"บันทึกรูปภาพ"</b> ได้เลยครับ
             </p>
+            <button onclick="closeModal()" class="bg-blue-600 text-white w-full py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg active:scale-95 transition">
+                รับทราบ / ตกลง
+            </button>
+        </div>
+    </div>
+    <div class="max-w-xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 pt-4">☕ คลังรูปเมนูชาพระนคร</h1>
+
+        <div class="flex border-b border-gray-200 mb-6 sticky top-0 bg-gray-50 z-20 pt-2">
+            <button onclick="switchTab('watermark')" id="btn-watermark" class="flex-1 pb-3 text-center transition tab-active">
+                แบบมีชื่อเครื่องดื่มในรูป
+            </button>
+            <button onclick="switchTab('clean')" id="btn-clean" class="flex-1 pb-3 text-center transition tab-inactive">
+                แบบไม่มีชื่อเครื่องดื่มในรูป
+            </button>
         </div>
 
-        <div id="imageGrid" class="grid grid-cols-2 gap-4 pb-10">
-            {% for img in images %}
-            <div class="image-card bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <img src="{{ img['secure_url'] }}" 
-                     class="w-full h-40 object-cover rounded-lg mb-3 bg-gray-200" 
-                     loading="lazy"
-                     crossorigin="anonymous">
-                
-                <p class="text-sm font-bold text-gray-800 truncate mb-2 name-label text-center">
-                    {{ img['public_id'].replace('menu/', '') }}
-                </p>
-                
-                <a href="{{ img['secure_url'] }}" target="_blank"
-                   class="block w-full bg-blue-50 hover:bg-blue-100 text-blue-600 text-center py-2 rounded-lg text-xs font-bold transition">
-                   🔍 ดูรูปใหญ่
-                </a>
+        <div class="mb-4">
+            <input type="text" id="searchInput" onkeyup="filterImages()" 
+                   placeholder="🔍 ค้นหาชื่อเมนู..." 
+                   class="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+        </div>
+
+        <div id="content-watermark">
+            <div id="grid-watermark" class="grid grid-cols-2 gap-4 pb-10 image-grid">
+                {% for img in wm_images %}
+                <div class="image-card bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                    <img src="{{ img['secure_url'] }}" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <p class="text-sm font-bold text-gray-800 truncate mb-2 name-label text-center">
+                        {{ img['public_id'].split('/')[-1] }}
+                    </p>
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="block w-full bg-blue-50 text-blue-600 text-center py-2 rounded-lg text-xs font-bold">
+                        แตะเพื่อดูรูปใหญ่
+                    </a>
+                </div>
+                {% endfor %}
+                {% if wm_images|length == 0 %} <p class="col-span-2 text-center text-gray-400 mt-10">ยังไม่มีรูปในโซนนี้</p> {% endif %}
             </div>
-            {% endfor %}
-            
-            {% if images|length == 0 %}
-            <div class="col-span-2 text-center text-gray-400 py-10">
-                <p>ยังไม่มีรูปเมนูในระบบ</p>
+        </div>
+
+        <div id="content-clean" class="hidden">
+            <div id="grid-clean" class="grid grid-cols-2 gap-4 pb-10 image-grid">
+                {% for img in cl_images %}
+                <div class="image-card bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                    <img src="{{ img['secure_url'] }}" class="w-full h-40 object-cover rounded-lg mb-2 bg-gray-200">
+                    <p class="text-sm font-bold text-gray-800 truncate mb-2 name-label text-center">
+                        {{ img['public_id'].split('/')[-1] }}
+                    </p>
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="block w-full bg-green-50 text-green-600 text-center py-2 rounded-lg text-xs font-bold">
+                        แตะเพื่อดูรูปใหญ่
+                    </a>
+                </div>
+                {% endfor %}
+                {% if cl_images|length == 0 %} <p class="col-span-2 text-center text-gray-400 mt-10">ยังไม่มีรูปในโซนนี้</p> {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 
     <script>
-        // ฟังก์ชัน 1: ค้นหารูปจากชื่อ
-        function filterImages() {
-            let input = document.getElementById('searchInput').value.toLowerCase();
-            let cards = document.getElementsByClassName('image-card');
-
-            for (let i = 0; i < cards.length; i++) {
-                // ดึงชื่อเมนูมาเทียบ
-                let name = cards[i].querySelector('.name-label').innerText.toLowerCase();
-                
-                if (name.includes(input)) {
-                    cards[i].style.display = ""; // แสดง
-                } else {
-                    cards[i].style.display = "none"; // ซ่อน
-                }
-            }
+        // 🔥 ส่วนที่ 2: Script ควบคุม Popup
+        window.onload = function() {
+            // สั่งให้ Popup แสดงขึ้นมาเมื่อโหลดหน้าเว็บเสร็จ
+            document.getElementById('infoModal').classList.remove('hidden');
         }
 
-        // ฟังก์ชัน 2: แชร์ไฟล์ภาพ (Web Share API)
-        async function shareAllImages() {
-            const btn = document.getElementById('shareBtn');
-            const originalText = btn.innerHTML;
+        function closeModal() {
+            // สั่งซ่อน Popup เมื่อกดปุ่ม
+            document.getElementById('infoModal').classList.add('hidden');
+        }
+
+        // Script เดิมสำหรับ Tabs และ Search
+        let currentTab = 'watermark';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('content-watermark').classList.add('hidden');
+            document.getElementById('content-clean').classList.add('hidden');
+            document.getElementById('content-' + tab).classList.remove('hidden');
+
+            document.getElementById('btn-watermark').className = "flex-1 pb-3 text-center transition " + (tab === 'watermark' ? 'tab-active' : 'tab-inactive');
+            document.getElementById('btn-clean').className = "flex-1 pb-3 text-center transition " + (tab === 'clean' ? 'tab-active' : 'tab-inactive');
             
-            // เช็คว่า Browser รองรับหรือไม่
-            if (!navigator.share || !navigator.canShare) {
-                alert("เบราว์เซอร์นี้ไม่รองรับการแชร์หลายไฟล์พร้อมกัน \nแนะนำให้ใช้ Safari (iOS) หรือ Chrome (Android)");
-                return;
-            }
+            document.getElementById('searchInput').value = '';
+            filterImages(); 
+        }
 
-            try {
-                btn.innerHTML = "⏳ กำลังดึงรูปภาพ...";
-                btn.disabled = true;
-                btn.classList.add('opacity-75');
+        function filterImages() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let activeGridId = currentTab === 'watermark' ? 'grid-watermark' : 'grid-clean';
+            let cards = document.getElementById(activeGridId).getElementsByClassName('image-card');
 
-                // 1. หาเฉพาะรูปที่กำลังแสดงอยู่ (ไม่เอารูปที่ถูกซ่อนจากการค้นหา)
-                const visibleCards = Array.from(document.querySelectorAll('.image-card'))
-                                         .filter(card => card.style.display !== 'none');
-                
-                if(visibleCards.length === 0) {
-                    alert("ไม่พบรูปภาพที่จะบันทึก");
-                    return;
-                }
-
-                if(visibleCards.length > 10) {
-                    if(!confirm(`คุณกำลังจะโหลด ${visibleCards.length} รูป อาจใช้เวลาสักครู่ ยืนยันไหม?`)) {
-                        throw new Error("User cancelled");
-                    }
-                }
-
-                // 2. แปลง URL รูปภาพเป็นไฟล์
-                const filesArray = [];
-                for (let card of visibleCards) {
-                    const imgElement = card.querySelector('img');
-                    const imgUrl = imgElement.src;
-                    const nameText = card.querySelector('.name-label').innerText;
-                    const fileName = nameText + ".jpg"; // ตั้งชื่อไฟล์ตามชื่อเมนู
-                    
-                    try {
-                        const response = await fetch(imgUrl);
-                        const blob = await response.blob();
-                        const file = new File([blob], fileName, { type: blob.type });
-                        filesArray.push(file);
-                    } catch (e) {
-                        console.error("โหลดรูปไม่สำเร็จ:", fileName);
-                    }
-                }
-
-                // 3. สั่งแชร์
-                if (navigator.canShare({ files: filesArray })) {
-                    await navigator.share({
-                        files: filesArray,
-                        title: 'รูปเมนูเครื่องดื่ม',
-                        text: 'รูปเมนูทั้งหมดครับ'
-                    });
-                } else {
-                    alert("อุปกรณ์ของคุณไม่รองรับการแชร์ไฟล์ประเภทนี้");
-                }
-
-            } catch (error) {
-                console.log('Error sharing:', error);
-                if (error.message !== "User cancelled") {
-                    // alert('เกิดข้อผิดพลาดในการแชร์');
-                }
-            } finally {
-                // คืนค่าปุ่มกลับสู่สภาพเดิม
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                btn.classList.remove('opacity-75');
+            for (let i = 0; i < cards.length; i++) {
+                let name = cards[i].querySelector('.name-label').innerText.toLowerCase();
+                cards[i].style.display = name.includes(input) ? "" : "none";
             }
         }
     </script>
 </body>
 </html>
-
