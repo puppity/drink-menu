@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -7,10 +7,11 @@ from PIL import Image
 import io
 
 app = Flask(__name__)
+# ใช้ Config เดิมของคุณ
 app.secret_key = os.environ.get('SECRET_KEY', 'mysecretkey')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '1234')
 
-# ตั้งค่า Cloudinary
+# ตั้งค่า Cloudinary (ใช้ Config เดิมของคุณ)
 cloudinary.config(
     cloud_name = os.environ.get('CLOUD_NAME'),
     api_key = os.environ.get('CLOUD_API_KEY'),
@@ -18,18 +19,19 @@ cloudinary.config(
     secure = True
 )
 
+# ==========================================
+# 🏠 โซนหน้าบ้าน (โชว์เมนู)
+# ==========================================
 @app.route('/')
 def index():
     try:
         # ดึงรูปโซน "มีลายน้ำ"
-        res_watermark = cloudinary.api.resources(type="upload", prefix="menu/watermarked/", max_results=100)
-        img_watermark = res_watermark.get('resources', [])
-        img_watermark.sort(key=lambda x: x['created_at'], reverse=True)
+        res_watermark = cloudinary.api.resources(type="upload", prefix="menu/watermarked/", max_results=500, direction="desc")
+        img_watermark = sorted(res_watermark.get('resources', []), key=lambda x: x['created_at'], reverse=True)
 
         # ดึงรูปโซน "ไม่มีลายน้ำ" (Clean)
-        res_clean = cloudinary.api.resources(type="upload", prefix="menu/clean/", max_results=100)
-        img_clean = res_clean.get('resources', [])
-        img_clean.sort(key=lambda x: x['created_at'], reverse=True)
+        res_clean = cloudinary.api.resources(type="upload", prefix="menu/clean/", max_results=500, direction="desc")
+        img_clean = sorted(res_clean.get('resources', []), key=lambda x: x['created_at'], reverse=True)
         
     except:
         img_watermark = []
@@ -37,6 +39,9 @@ def index():
         
     return render_template('index.html', wm_images=img_watermark, cl_images=img_clean)
 
+# ==========================================
+# 🔐 โซน Login
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -46,94 +51,54 @@ def login():
         else:
             flash('รหัสผ่านไม่ถูกต้อง!')
     return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('index'))
+
+# ==========================================
+# ⚙️ โซน Admin (ระบบซิงค์คู่)
+# ==========================================
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
-    # --- ส่วนรับรูปภาพ (เหมือนเดิม) ---
-    if request.method == 'POST':
-        files = request.files.getlist('file')
-        custom_name = request.form.get('name', '').strip()
-        upload_type = request.form.get('type')
-        
-        uploaded_count = 0
-        
-        for i, file in enumerate(files):
-            if file:
-                try:
-                    if custom_name:
-                        final_name = f"{custom_name}_{i+1}" if len(files) > 1 else custom_name
-                    else:
-                        final_name = os.path.splitext(file.filename)[0]
-
-                    img = Image.open(file)
-                    if img.mode != 'RGB': img = img.convert('RGB')
-                    img.draft('RGB', (2048, 2048)) 
-                    if img.width > 2048 or img.height > 2048: 
-                        img.thumbnail((2048, 2048))
-
-                    if upload_type == 'watermarked':
-                        folder = "menu/watermarked"
-                    else:
-                        folder = "menu/clean"
-
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='JPEG', quality=85)
-                    img_byte_arr.seek(0)
-                    
-                    cloudinary.uploader.upload(img_byte_arr, public_id=f"{folder}/{final_name}")
-                    uploaded_count += 1
-                    img.close()
-                except Exception as e:
-                    print(f"Error uploading {file.filename}: {e}")
-
-        if uploaded_count > 0:
-            flash(f'✅ อัปโหลดเข้าโซน "{upload_type}" เรียบร้อย {uploaded_count} รูป!')
-        
-        return redirect(url_for('admin'))
-
-    # --- 🔥 ส่วนที่แก้ไข: ดึงรูปมาแสดง (เพิ่มจำนวน + เรียงใหม่) ---
+    # --- ดึงรูปมาจับคู่ (Sync Logic) ---
     try:
-        # 1. เพิ่ม max_results เป็น 500 (Cloudinary ให้สูงสุด 500 ต่อครั้ง)
-        # 2. ใส่ direction="desc" เพื่อบอกให้เอา "รูปล่าสุด" ขึ้นก่อนเสมอ
+        # 1. ดึงข้อมูลทั้ง 2 โฟลเดอร์ (Max 500 รูป)
+        res_wm = cloudinary.api.resources(type="upload", prefix="menu/watermarked/", max_results=500)
+        res_cl = cloudinary.api.resources(type="upload", prefix="menu/clean/", max_results=500)
         
-        res_wm = cloudinary.api.resources(
-            type="upload", 
-            prefix="menu/watermarked/", 
-            max_results=500, 
-            direction="desc" 
-        )
-        
-        res_cl = cloudinary.api.resources(
-            type="upload", 
-            prefix="menu/clean/", 
-            max_results=500, 
-            direction="desc"
-        )
-        
-        # รวมรายการ
-        all_images = res_wm.get('resources', []) + res_cl.get('resources', [])
-        
-        # เรียงใน Python อีกรอบเพื่อความชัวร์ (ใหม่สุดอยู่บนสุด)
-        all_images.sort(key=lambda x: x['created_at'], reverse=True)
-        
+        # 2. สร้าง Dictionary เพื่อจับคู่
+        # Key = ชื่อไฟล์, Value = ข้อมูลครบชุด
+        menu_items = {}
+
+        # วนลูปโซนลายน้ำ
+        for img in res_wm.get('resources', []):
+            filename = img['public_id'].split('/')[-1]
+            if filename not in menu_items:
+                menu_items[filename] = {'name': filename, 'wm': None, 'cl': None, 'created_at': img['created_at']}
+            menu_items[filename]['wm'] = img['secure_url']
+
+        # วนลูปโซนต้นฉบับ
+        for img in res_cl.get('resources', []):
+            filename = img['public_id'].split('/')[-1]
+            if filename not in menu_items:
+                menu_items[filename] = {'name': filename, 'wm': None, 'cl': None, 'created_at': img['created_at']}
+            menu_items[filename]['cl'] = img['secure_url']
+
+        # 3. เรียงตามวันที่ล่าสุด
+        sorted_items = sorted(menu_items.values(), key=lambda x: x['created_at'], reverse=True)
+
     except Exception as e:
         print(f"Error fetching images: {e}")
-        all_images = []
+        sorted_items = []
         
-    return render_template('admin.html', images=all_images)
+    return render_template('admin.html', items=sorted_items)
 
-@app.route('/delete/<path:public_id>')
-def delete_image(public_id):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    try:
-        cloudinary.uploader.destroy(public_id)
-        flash('🗑️ ลบรูปเรียบร้อยแล้ว')
-    except Exception as e:
-        flash(f'เกิดข้อผิดพลาด: {e}')
-    return redirect(url_for('admin'))
+# --- API อัปโหลดรูป (รับจาก Queue) ---
 @app.route('/upload_api', methods=['POST'])
 def upload_api():
     if not session.get('logged_in'):
@@ -142,36 +107,29 @@ def upload_api():
     file = request.files.get('file')
     custom_name = request.form.get('name', '').strip()
     upload_type = request.form.get('type')
-    index = request.form.get('index', '0') # รับลำดับรูปมาด้วย (เผื่อตั้งชื่อ)
+    index = request.form.get('index', '0')
 
     if file:
         try:
             # ตั้งชื่อไฟล์
             if custom_name:
-                # ถ้ามีการตั้งชื่อ จะใส่เลขรันตามหลังให้
-                final_name = f"{custom_name}_{index}"
+                final_name = f"{custom_name}_{index}" if int(index) > 0 else custom_name
             else:
                 final_name = os.path.splitext(file.filename)[0]
 
-            # Process รูปภาพ
+            # Process Image
             img = Image.open(file)
             if img.mode != 'RGB': img = img.convert('RGB')
             img.draft('RGB', (2048, 2048))
             if img.width > 2048 or img.height > 2048: 
                 img.thumbnail((2048, 2048))
 
-            # เลือกโฟลเดอร์
-            if upload_type == 'watermarked':
-                folder = "menu/watermarked"
-            else:
-                folder = "menu/clean"
+            folder = "menu/watermarked" if upload_type == 'watermarked' else "menu/clean"
 
-            # Save to Buffer
             img_byte_arr = io.BytesIO()
             img.save(img_byte_arr, format='JPEG', quality=85)
             img_byte_arr.seek(0)
             
-            # Upload
             cloudinary.uploader.upload(img_byte_arr, public_id=f"{folder}/{final_name}")
             img.close()
             
@@ -181,110 +139,85 @@ def upload_api():
             return {'status': 'error', 'message': str(e)}, 500
             
     return {'status': 'error', 'message': 'No file'}, 400
-    # ... (โค้ดด้านบนเหมือนเดิม) ...
 
-# 🔥 เพิ่ม Route สำหรับการ "แทนที่รูปภาพ" (Replace)
-# ... (โค้ดส่วนบนเหมือนเดิม) ...
-
-# ... (โค้ดส่วนบนเหมือนเดิม) ...
-
-@app.route('/replace_image', methods=['POST'])
-def replace_image():
+# --- API เปลี่ยนชื่อแบบแพ็คคู่ (Sync Rename) ---
+@app.route('/rename_sync', methods=['POST'])
+def rename_sync():
     if not session.get('logged_in'):
         return {'status': 'error', 'message': 'Unauthorized'}, 401
     
-    file = request.files.get('file')
-    old_public_id = request.form.get('public_id')
-    new_custom_name = request.form.get('new_name', '').strip() # รับค่าชื่อ (อาจจะว่างก็ได้)
-
-    if file and old_public_id:
-        try:
-            # 1. เตรียมรูป
-            img = Image.open(file)
-            if img.mode != 'RGB': img = img.convert('RGB')
-            img.draft('RGB', (2048, 2048))
-            if img.width > 2048 or img.height > 2048: 
-                img.thumbnail((2048, 2048))
-
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='JPEG', quality=85)
-            img_byte_arr.seek(0)
-            
-            # 2. หาโฟลเดอร์เดิม
-            if "watermarked" in old_public_id:
-                folder = "menu/watermarked"
-            else:
-                folder = "menu/clean"
-
-            # 3. 🔥 Logic ตั้งชื่อใหม่ (ส่วนที่แก้ไข)
-            if new_custom_name:
-                # กรณี A: User พิมพ์ชื่อมา -> ใช้ชื่อที่พิมพ์
-                filename = new_custom_name
-            else:
-                # กรณี B: User ไม่พิมพ์ชื่อ (ปล่อยว่าง) -> ใช้ชื่อไฟล์ของรูปใหม่เลย
-                filename = os.path.splitext(file.filename)[0]
-
-            new_public_id = f"{folder}/{filename}"
-
-            # 4. เช็คว่าจะทับหรือลบสร้างใหม่
-            if new_public_id == old_public_id:
-                # ชื่อเหมือนเดิม (ทับ)
-                cloudinary.uploader.upload(img_byte_arr, public_id=new_public_id, overwrite=True, invalidate=True)
-            else:
-                # ชื่อเปลี่ยน (ลบเก่า -> สร้างใหม่)
-                cloudinary.uploader.destroy(old_public_id)
-                cloudinary.uploader.upload(img_byte_arr, public_id=new_public_id, overwrite=True, invalidate=True)
-
-            img.close()
-            return {'status': 'success'}
-
-        except Exception as e:
-            return {'status': 'error', 'message': str(e)}, 500
-            
-    return {'status': 'error', 'message': 'ข้อมูลไม่ครบ'}, 400
-
-# ... (โค้ดส่วนล่างเหมือนเดิม) ...
-# 🔥 เพิ่ม Route สำหรับ "เปลี่ยนชื่อไฟล์" (Rename)
-@app.route('/rename_image', methods=['POST'])
-def rename_image():
-    if not session.get('logged_in'):
-        return {'status': 'error', 'message': 'Unauthorized'}, 401
-    
-    old_id = request.form.get('old_id')
+    old_name = request.form.get('old_name')
     new_name = request.form.get('new_name', '').strip()
 
-    if not old_id or not new_name:
-        return {'status': 'error', 'message': 'กรุณาระบุชื่อใหม่'}, 400
+    if not old_name or not new_name:
+        return {'status': 'error', 'message': 'ข้อมูลไม่ครบ'}, 400
 
     try:
-        # 1. หาว่ารูปอยู่โฟลเดอร์ไหน
-        if "watermarked" in old_id:
-            folder = "menu/watermarked"
-        else:
-            folder = "menu/clean"
-            
-        # 2. สร้าง ID ใหม่
-        new_id = f"{folder}/{new_name}"
-        
-        # 3. สั่งเปลี่ยนชื่อใน Cloudinary
-        if old_id != new_id:
-            cloudinary.uploader.rename(old_id, new_id, overwrite=True, invalidate=True)
-            
-        return {'status': 'success'}
+        # เปลี่ยนชื่อในโซนลายน้ำ
+        try:
+            cloudinary.uploader.rename(f"menu/watermarked/{old_name}", f"menu/watermarked/{new_name}", overwrite=True)
+        except: pass
 
+        # เปลี่ยนชื่อในโซนต้นฉบับ
+        try:
+            cloudinary.uploader.rename(f"menu/clean/{old_name}", f"menu/clean/{new_name}", overwrite=True)
+        except: pass
+
+        return {'status': 'success'}
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
-# ... (โค้ดส่วนล่างเหมือนเดิม) ...
+# --- API แทนที่รูป (Replace Sync) ---
+@app.route('/replace_sync', methods=['POST'])
+def replace_sync():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
 
-# ... (โค้ดส่วนล่างเหมือนเดิม) ...
+    file_wm = request.files.get('file_wm')
+    file_cl = request.files.get('file_cl')
+    target_name = request.form.get('target_name')
 
-# ... (บรรทัด if __name__ == '__main__': เหมือนเดิม) ...
+    if not target_name:
+        return {'status': 'error', 'message': 'No name provided'}, 400
+
+    try:
+        # ทับลายน้ำ
+        if file_wm:
+            img = Image.open(file_wm)
+            if img.mode != 'RGB': img = img.convert('RGB')
+            img.thumbnail((2048, 2048))
+            byte_arr = io.BytesIO()
+            img.save(byte_arr, format='JPEG', quality=85)
+            byte_arr.seek(0)
+            cloudinary.uploader.upload(byte_arr, public_id=f"menu/watermarked/{target_name}", overwrite=True, invalidate=True)
+
+        # ทับต้นฉบับ
+        if file_cl:
+            img = Image.open(file_cl)
+            if img.mode != 'RGB': img = img.convert('RGB')
+            img.thumbnail((2048, 2048))
+            byte_arr = io.BytesIO()
+            img.save(byte_arr, format='JPEG', quality=85)
+            byte_arr.seek(0)
+            cloudinary.uploader.upload(byte_arr, public_id=f"menu/clean/{target_name}", overwrite=True, invalidate=True)
+
+        return {'status': 'success'}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
+
+# --- ลบรูป (ลบเดี่ยว - ใช้ชื่อเต็ม path) ---
+@app.route('/delete/<path:public_id>')
+def delete_image(public_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    try:
+        cloudinary.uploader.destroy(public_id, invalidate=True)
+        flash('🗑️ ลบรูปเรียบร้อยแล้ว')
+    except Exception as e:
+        flash(f'เกิดข้อผิดพลาด: {e}')
+        
+    return redirect(url_for('admin'))
+
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
-
