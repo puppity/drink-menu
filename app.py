@@ -219,5 +219,25 @@ def delete_image(public_id):
         
     return redirect(url_for('admin'))
 
+@app.route('/delete_sync/<string:filename>')
+def delete_sync(filename):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    try:
+        # 1. ลบโซนลายน้ำ
+        cloudinary.uploader.destroy(f"menu/watermarked/{filename}", invalidate=True)
+        # 2. ลบโซนต้นฉบับ
+        cloudinary.uploader.destroy(f"menu/clean/{filename}", invalidate=True)
+        
+        # (Optional) ส่งข้อความแจ้งเตือนกลับไป
+        flash(f'🗑️ ลบเมนู "{filename}" ออกจากระบบเรียบร้อยแล้ว')
+        
+    except Exception as e:
+        print(f"Error deleting: {e}")
+        
+    return redirect(url_for('admin'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+
