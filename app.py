@@ -240,12 +240,47 @@ def replace_image():
             return {'status': 'error', 'message': str(e)}, 500
             
     return {'status': 'error', 'message': 'ข้อมูลไม่ครบ'}, 400
+    # ... (โค้ดส่วนบนเหมือนเดิม) ...
+
+# 🔥 เพิ่ม Route สำหรับ "เปลี่ยนชื่อไฟล์" (Rename)
+@app.route('/rename_image', methods=['POST'])
+def rename_image():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    old_id = request.form.get('old_id')
+    new_name = request.form.get('new_name', '').strip()
+
+    if not old_id or not new_name:
+        return {'status': 'error', 'message': 'กรุณาระบุชื่อใหม่'}, 400
+
+    try:
+        # 1. หาว่ารูปอยู่โฟลเดอร์ไหน
+        if "watermarked" in old_id:
+            folder = "menu/watermarked"
+        else:
+            folder = "menu/clean"
+            
+        # 2. สร้าง ID ใหม่
+        new_id = f"{folder}/{new_name}"
+        
+        # 3. สั่งเปลี่ยนชื่อใน Cloudinary
+        if old_id != new_id:
+            cloudinary.uploader.rename(old_id, new_id, overwrite=True, invalidate=True)
+            
+        return {'status': 'success'}
+
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
+
+# ... (โค้ดส่วนล่างเหมือนเดิม) ...
 
 # ... (โค้ดส่วนล่างเหมือนเดิม) ...
 
 # ... (บรรทัด if __name__ == '__main__': เหมือนเดิม) ...
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
