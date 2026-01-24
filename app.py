@@ -181,7 +181,51 @@ def upload_api():
             return {'status': 'error', 'message': str(e)}, 500
             
     return {'status': 'error', 'message': 'No file'}, 400
+    # ... (โค้ดด้านบนเหมือนเดิม) ...
+
+# 🔥 เพิ่ม Route สำหรับการ "แทนที่รูปภาพ" (Replace)
+@app.route('/replace_image', methods=['POST'])
+def replace_image():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    file = request.files.get('file')
+    public_id = request.form.get('public_id') # รับรหัสรูปเดิมมา (เช่น menu/clean/img01)
+
+    if file and public_id:
+        try:
+            # แปลงไฟล์เป็น Byte
+            img = Image.open(file)
+            if img.mode != 'RGB': img = img.convert('RGB')
+            # ย่อรูป (เหมือนเดิม)
+            img.draft('RGB', (2048, 2048))
+            if img.width > 2048 or img.height > 2048: 
+                img.thumbnail((2048, 2048))
+
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='JPEG', quality=85)
+            img_byte_arr.seek(0)
+            
+            # 🚀 สั่งอัปโหลดทับ (overwrite=True) และล้าง Cache (invalidate=True)
+            # สำคัญมาก: invalidate=True จะทำให้รูปใหม่โชว์ทันที ไม่ติด Cache เดิม
+            cloudinary.uploader.upload(
+                img_byte_arr, 
+                public_id=public_id, 
+                overwrite=True, 
+                invalidate=True 
+            )
+            img.close()
+            
+            return {'status': 'success'}
+
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}, 500
+            
+    return {'status': 'error', 'message': 'ข้อมูลไม่ครบ'}, 400
+
+# ... (บรรทัด if __name__ == '__main__': เหมือนเดิม) ...
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
