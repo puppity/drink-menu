@@ -39,7 +39,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block mb-2 text-sm font-bold">ชื่อนำหน้า (Option):</label>
-                        <input type="text" id="customName" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="เช่น ชาไทย">
+                        <input type="text" id="customName" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="เช่น ชาไทย (ถ้าชื่อซ้ำจะทับ)">
                     </div>
                     <div>
                         <label class="block mb-2 text-sm font-bold">เลือกไฟล์ (หลายรูปได้):</label>
@@ -66,10 +66,9 @@
 
         <div class="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
             <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-images"></i> รายการรูปภาพทั้งหมด</h2>
-            
             <div class="relative w-full md:w-1/2">
                 <input type="text" id="searchInput" onkeyup="searchImages()" 
-                       placeholder="🔍 พิมพ์ชื่อเพื่อค้นหา..." 
+                       placeholder="🔍 ค้นหา..." 
                        class="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
             </div>
@@ -80,12 +79,10 @@
                 {% for img in images %}
                 <div class="image-item flex items-center justify-between p-4 hover:bg-gray-50 transition group" 
                      data-name="{{ img['public_id'] }}">
-                    
                     <div class="flex items-center gap-4 overflow-hidden">
                         <div class="relative w-16 h-16 flex-shrink-0">
                             <img src="{{ img['secure_url'] }}" class="w-full h-full object-cover rounded-lg border bg-gray-100 img-preview">
                         </div>
-                        
                         <div class="flex flex-col">
                             <span class="font-bold text-gray-800 text-sm break-all">
                                 {{ img['public_id'].split('/')[-1] }}
@@ -100,13 +97,11 @@
                             </span>
                         </div>
                     </div>
-
                     <div class="flex gap-2">
                         <button onclick="openReplaceModal('{{ img['public_id'] }}')" 
                                 class="bg-yellow-50 text-yellow-600 border border-yellow-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-100 transition flex items-center gap-1">
-                            <i class="fa-solid fa-rotate"></i> <span class="hidden md:inline">แทนที่</span>
+                            <i class="fa-solid fa-rotate"></i> <span class="hidden md:inline">แทนที่/แก้ชื่อ</span>
                         </button>
-                        
                         <a href="/delete/{{ img['public_id'] }}" 
                            onclick="return confirm('⚠️ ยืนยันลบรูปนี้ถาวร?')"
                            class="bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition flex items-center gap-1">
@@ -116,28 +111,31 @@
                 </div>
                 {% endfor %}
             </div>
-            
             <div id="noResult" class="hidden p-10 text-center text-gray-400">
                 <i class="fa-regular fa-face-frown text-4xl mb-2"></i>
-                <p>ไม่พบรูปภาพที่ค้นหา</p>
+                <p>ไม่พบรูปภาพ</p>
             </div>
         </div>
     </div>
 
     <div id="replaceModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl scale-up-center">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">🔄 แทนที่รูปภาพ</h3>
+            <h3 class="text-lg font-bold mb-2 text-gray-800">🔄 แทนที่รูปภาพ</h3>
             <p class="text-sm text-gray-500 mb-4">
-                กำลังจะแทนที่ไฟล์: <br>
-                <b id="targetName" class="text-blue-600 break-all">...</b>
+                ไฟล์เดิม: <b id="targetName" class="text-blue-600 break-all">...</b>
             </p>
             
-            <input type="file" id="replaceFile" accept="image/*" class="w-full mb-6 text-sm text-gray-500
+            <label class="block text-sm font-bold mb-2 text-gray-700">1. เลือกรูปใหม่:</label>
+            <input type="file" id="replaceFile" accept="image/*" class="w-full mb-4 text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4
               file:rounded-full file:border-0
               file:text-sm file:font-semibold
               file:bg-blue-50 file:text-blue-700
               hover:file:bg-blue-100">
+
+            <label class="block text-sm font-bold mb-2 text-gray-700">2. เปลี่ยนชื่อใหม่ (ถ้าต้องการ):</label>
+            <input type="text" id="replaceNewName" placeholder="เว้นว่าง = ใช้ชื่อไฟล์รูปใหม่" 
+                   class="w-full p-2 border rounded-lg mb-6 bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500">
             
             <div class="flex gap-3">
                 <button onclick="closeReplaceModal()" class="flex-1 py-2 rounded-xl text-gray-500 font-bold hover:bg-gray-100">ยกเลิก</button>
@@ -147,34 +145,28 @@
     </div>
 
     <script>
-        // --- 🔍 ระบบค้นหา (Search) ---
+        // --- Search ---
         function searchImages() {
             let input = document.getElementById('searchInput').value.toLowerCase();
             let items = document.getElementsByClassName('image-item');
             let visibleCount = 0;
-
             for (let i = 0; i < items.length; i++) {
                 let name = items[i].getAttribute('data-name').toLowerCase();
-                if (name.includes(input)) {
-                    items[i].style.display = "";
-                    visibleCount++;
-                } else {
-                    items[i].style.display = "none";
-                }
+                if (name.includes(input)) { items[i].style.display = ""; visibleCount++; } 
+                else { items[i].style.display = "none"; }
             }
-            
-            // โชว์/ซ่อน ข้อความ "ไม่พบข้อมูล"
             document.getElementById('noResult').style.display = (visibleCount === 0) ? "block" : "none";
         }
 
-        // --- 🔄 ระบบแทนที่รูป (Replace) ---
+        // --- Replace Logic ---
         let currentTargetId = '';
 
         function openReplaceModal(publicId) {
             currentTargetId = publicId;
             document.getElementById('targetName').innerText = publicId.split('/').pop();
             document.getElementById('replaceModal').classList.remove('hidden');
-            document.getElementById('replaceFile').value = ''; // Reset file
+            document.getElementById('replaceFile').value = '';
+            document.getElementById('replaceNewName').value = ''; // เคลียร์ชื่อ
         }
 
         function closeReplaceModal() {
@@ -183,26 +175,28 @@
 
         async function confirmReplace() {
             const fileInput = document.getElementById('replaceFile');
+            const newNameInput = document.getElementById('replaceNewName');
+            
             if (fileInput.files.length === 0) return alert("กรุณาเลือกไฟล์ใหม่ด้วยครับ");
 
             const btn = document.getElementById('confirmReplaceBtn');
             const originalText = btn.innerText;
-            btn.innerText = "⏳ กำลังอัปโหลด...";
+            btn.innerText = "⏳ กำลังดำเนินการ...";
             btn.disabled = true;
 
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            formData.append('public_id', currentTargetId); // ส่ง ID รูปเดิมไป เพื่อทับ
+            formData.append('public_id', currentTargetId);
+            formData.append('new_name', newNameInput.value); // ส่งชื่อใหม่ไปด้วย
 
             try {
                 const res = await fetch('/replace_image', { method: 'POST', body: formData });
                 const data = await res.json();
-
                 if (data.status === 'success') {
-                    alert("✅ แทนที่รูปเรียบร้อย!");
-                    window.location.reload(); // รีเฟรชเพื่อดูรูปใหม่
+                    alert("✅ ดำเนินการเรียบร้อย!");
+                    window.location.reload();
                 } else {
-                    alert("เกิดข้อผิดพลาด: " + data.message);
+                    alert("Error: " + data.message);
                 }
             } catch (e) {
                 alert("Error: " + e.message);
@@ -213,7 +207,7 @@
             }
         }
 
-        // --- 📤 ระบบคิวอัปโหลด (Queue Upload - เหมือนเดิม) ---
+        // --- Queue Upload (Logic เดิม) ---
         let fileQueue = [], totalFiles = 0, successCount = 0, failCount = 0, activeUploads = 0;
         const CONCURRENCY_LIMIT = 2;
 
@@ -227,33 +221,22 @@
         function startQueueUpload() {
             const files = document.getElementById('fileInput').files;
             if (files.length === 0) return alert("กรุณาเลือกไฟล์ก่อนครับ");
-
             document.getElementById('uploadForm').classList.add('opacity-50', 'pointer-events-none');
             document.getElementById('progressArea').classList.remove('hidden');
             document.getElementById('logArea').innerHTML = '';
-
-            fileQueue = Array.from(files);
-            totalFiles = fileQueue.length;
-            successCount = 0; failCount = 0;
-
+            fileQueue = Array.from(files); totalFiles = fileQueue.length; successCount = 0; failCount = 0;
             log(`เริ่มคิว ${totalFiles} รูป...`);
             for (let i = 0; i < CONCURRENCY_LIMIT; i++) processNextInQueue();
         }
 
         function processNextInQueue() {
-            if (fileQueue.length === 0 && activeUploads === 0) {
-                finishUpload(); return;
-            }
+            if (fileQueue.length === 0 && activeUploads === 0) { finishUpload(); return; }
             if (fileQueue.length === 0) return;
-
             const file = fileQueue.shift();
             const index = totalFiles - fileQueue.length;
             activeUploads++;
-
             uploadSingleFile(file, index).then(() => {
-                activeUploads--;
-                updateProgress();
-                processNextInQueue();
+                activeUploads--; updateProgress(); processNextInQueue();
             });
         }
 
@@ -263,22 +246,13 @@
             formData.append('type', document.querySelector('input[name="type"]:checked').value);
             formData.append('name', document.getElementById('customName').value);
             formData.append('index', index);
-
             try {
                 log(`กำลังส่ง: ${file.name}...`);
                 const response = await fetch('/upload_api', { method: 'POST', body: formData });
                 const result = await response.json();
-                
-                if (result.status === 'success') {
-                    successCount++;
-                    log(`✅ เสร็จสิ้น: ${result.file}`);
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (error) {
-                failCount++;
-                log(`❌ ผิดพลาด (${file.name}): ${error.message}`, 'error');
-            }
+                if (result.status === 'success') { successCount++; log(`✅ เสร็จสิ้น: ${result.file}`); } 
+                else { throw new Error(result.message); }
+            } catch (error) { failCount++; log(`❌ พลาด: ${error.message}`, 'error'); }
         }
 
         function updateProgress() {
@@ -290,7 +264,7 @@
         }
 
         function finishUpload() {
-            log('🎉 เสร็จสิ้นทั้งหมด! รีเฟรชหน้าจอ...', 'info');
+            log('🎉 เสร็จสิ้น! กำลังรีเฟรช...', 'info');
             setTimeout(() => window.location.reload(), 1500);
         }
     </script>
