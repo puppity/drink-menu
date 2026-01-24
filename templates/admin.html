@@ -160,14 +160,34 @@
         </div>
     </div>
 
-    <script>
-        // --- 📂 ระบบ Tab ---
+   <script>
+        // --- 📂 ระบบจัดการ Tab (จำค่าล่าสุด) ---
         let currentAdminTab = 'watermarked';
-        window.onload = function() { switchAdminTab('watermarked'); }
+
+        window.onload = function() {
+            // 1. เช็คว่าเมื่อกี้อยู่อันไหน (ถ้าไม่มีให้เริ่มที่ watermarked)
+            const savedTab = localStorage.getItem('lastAdminTab') || 'watermarked';
+            switchAdminTab(savedTab);
+        }
+
         function switchAdminTab(type) {
             currentAdminTab = type;
-            document.getElementById('tab-watermarked').className = type === 'watermarked' ? "flex-1 py-4 text-center transition tab-active" : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
-            document.getElementById('tab-clean').className = type === 'clean' ? "flex-1 py-4 text-center transition tab-active" : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
+            // 2. บันทึกค่าลงเครื่อง
+            localStorage.setItem('lastAdminTab', type);
+            
+            // เปลี่ยนสีปุ่ม
+            document.getElementById('tab-watermarked').className = type === 'watermarked' 
+                ? "flex-1 py-4 text-center transition tab-active" 
+                : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
+            
+            document.getElementById('tab-clean').className = type === 'clean' 
+                ? "flex-1 py-4 text-center transition tab-active" 
+                : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
+
+            // เปลี่ยนข้อความในช่องค้นหาให้รู้ว่าอยู่โซนไหน
+            const placeholder = type === 'watermarked' ? "🔍 ค้นหาในโซนลายน้ำ..." : "🔍 ค้นหาในโซนต้นฉบับ...";
+            document.getElementById('searchInput').placeholder = placeholder;
+
             searchImages(); 
         }
 
@@ -179,8 +199,12 @@
             for (let i = 0; i < items.length; i++) {
                 let name = items[i].getAttribute('data-name').toLowerCase();
                 let type = items[i].getAttribute('data-type');
-                if (type === currentAdminTab && name.includes(input)) { items[i].style.display = "flex"; visibleCount++; } 
-                else { items[i].style.display = "none"; }
+                if (type === currentAdminTab && name.includes(input)) { 
+                    items[i].style.display = "flex"; 
+                    visibleCount++; 
+                } else { 
+                    items[i].style.display = "none"; 
+                }
             }
             document.getElementById('noResult').style.display = (visibleCount === 0) ? "block" : "none";
         }
@@ -193,7 +217,7 @@
             let currentName = publicId.split('/').pop();
             
             document.getElementById('targetName').innerText = currentName;
-            document.getElementById('editNewName').value = currentName; // ใส่ชื่อเดิมไว้ก่อน
+            document.getElementById('editNewName').value = currentName; 
             document.getElementById('editFile').value = '';
             document.getElementById('editModal').classList.remove('hidden');
         }
@@ -206,8 +230,6 @@
             const btn = document.getElementById('confirmEditBtn');
             const originalText = btn.innerText;
 
-            // 🔥 แก้ไข Logic การตรวจสอบ
-            // ถ้าไม่ได้เลือกไฟล์ใหม่ และชื่อก็ว่างเปล่า -> ห้ามส่ง
             if (fileInput.files.length === 0 && !newName) {
                 return alert("กรุณาระบุชื่อใหม่ หรือเลือกไฟล์รูปภาพ");
             }
@@ -215,23 +237,20 @@
             btn.disabled = true; btn.innerText = "⏳ กำลังบันทึก...";
 
             try {
-                // กรณี 1: มีการเลือกไฟล์ (Replace)
                 if (fileInput.files.length > 0) {
                     const formData = new FormData();
                     formData.append('file', fileInput.files[0]);
                     formData.append('public_id', currentTargetId);
-                    formData.append('new_name', newName); // ส่งชื่อใหม่ (หรือค่าว่าง) ไปให้หลังบ้านจัดการ
+                    formData.append('new_name', newName);
 
                     const res = await fetch('/replace_image', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status === 'success') {
-                        alert("✅ เปลี่ยนรูปเรียบร้อย!");
-                        window.location.reload();
+                        // ไม่ alert แล้วให้มันรีเฟรชเลยจะดูสมูทกว่า
+                        window.location.reload(); 
                     } else { throw new Error(data.message); }
 
-                } 
-                // กรณี 2: ไม่เลือกไฟล์ (Rename Only)
-                else {
+                } else {
                     const formData = new FormData();
                     formData.append('old_id', currentTargetId);
                     formData.append('new_name', newName);
@@ -239,14 +258,12 @@
                     const res = await fetch('/rename_image', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status === 'success') {
-                        alert("✅ แก้ไขชื่อเรียบร้อย!");
                         window.location.reload();
                     } else { throw new Error(data.message); }
                 }
 
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
-            } finally {
                 btn.disabled = false; btn.innerText = originalText; closeEditModal();
             }
         }
@@ -299,7 +316,8 @@
             document.getElementById('percentText').innerText = percent + '%';
             document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount}`;
         }
-        function finishUpload() { log('🎉 เสร็จสิ้น! กำลังรีเฟรช...', 'info'); setTimeout(() => window.location.reload(), 1500); }
+        function finishUpload() { log('🎉 เสร็จสิ้น! รีเฟรช...', 'info'); setTimeout(() => window.location.reload(), 1500); }
     </script>
 </body>
 </html>
+
