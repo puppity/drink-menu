@@ -139,6 +139,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-bold mb-2 text-gray-700">1. แก้ไขชื่อ (Rename):</label>
                 <input type="text" id="editNewName" class="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500" placeholder="ใส่ชื่อใหม่ที่ต้องการ">
+                <p class="text-xs text-gray-400 mt-1">* หากเลือกไฟล์ใหม่แล้วปล่อยชื่อว่าง = ใช้ชื่อไฟล์นั้นเลย</p>
             </div>
 
             <div class="relative flex py-2 items-center">
@@ -150,7 +151,6 @@
             <div class="mb-6">
                 <label class="block text-sm font-bold mb-2 text-gray-700">2. เปลี่ยนไฟล์รูป (Replace):</label>
                 <input type="file" id="editFile" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <p class="text-xs text-gray-400 mt-1">* ถ้าไม่เลือกไฟล์ จะเป็นการเปลี่ยนชื่ออย่างเดียว</p>
             </div>
             
             <div class="flex gap-3">
@@ -161,47 +161,26 @@
     </div>
 
     <script>
-        // --- 📂 ระบบจัดการ Tab (แยกโซน) ---
-        let currentAdminTab = 'watermarked'; // ค่าเริ่มต้น
-
-        // เรียกใช้ครั้งแรกเพื่อกรองรูป
-        window.onload = function() {
-            switchAdminTab('watermarked');
-        }
-
+        // --- 📂 ระบบ Tab ---
+        let currentAdminTab = 'watermarked';
+        window.onload = function() { switchAdminTab('watermarked'); }
         function switchAdminTab(type) {
             currentAdminTab = type;
-            
-            // เปลี่ยนสีปุ่ม
-            document.getElementById('tab-watermarked').className = type === 'watermarked' 
-                ? "flex-1 py-4 text-center transition tab-active" 
-                : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
-            
-            document.getElementById('tab-clean').className = type === 'clean' 
-                ? "flex-1 py-4 text-center transition tab-active" 
-                : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
-
-            // กรองรายการรูป
+            document.getElementById('tab-watermarked').className = type === 'watermarked' ? "flex-1 py-4 text-center transition tab-active" : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
+            document.getElementById('tab-clean').className = type === 'clean' ? "flex-1 py-4 text-center transition tab-active" : "flex-1 py-4 text-center transition tab-inactive bg-gray-50";
             searchImages(); 
         }
 
-        // --- 🔍 ระบบค้นหา + กรองตาม Tab ---
+        // --- 🔍 ระบบ Search ---
         function searchImages() {
             let input = document.getElementById('searchInput').value.toLowerCase();
             let items = document.getElementsByClassName('image-item');
             let visibleCount = 0;
-
             for (let i = 0; i < items.length; i++) {
                 let name = items[i].getAttribute('data-name').toLowerCase();
-                let type = items[i].getAttribute('data-type'); // watermarked หรือ clean
-
-                // ต้องตรงตาม Tab และ ตรงตามคำค้นหา
-                if (type === currentAdminTab && name.includes(input)) {
-                    items[i].style.display = "flex";
-                    visibleCount++;
-                } else {
-                    items[i].style.display = "none";
-                }
+                let type = items[i].getAttribute('data-type');
+                if (type === currentAdminTab && name.includes(input)) { items[i].style.display = "flex"; visibleCount++; } 
+                else { items[i].style.display = "none"; }
             }
             document.getElementById('noResult').style.display = (visibleCount === 0) ? "block" : "none";
         }
@@ -214,14 +193,12 @@
             let currentName = publicId.split('/').pop();
             
             document.getElementById('targetName').innerText = currentName;
-            document.getElementById('editNewName').value = currentName; // ใส่ชื่อเดิมรอไว้ให้แก้
-            document.getElementById('editFile').value = ''; // เคลียร์ไฟล์
+            document.getElementById('editNewName').value = currentName; // ใส่ชื่อเดิมไว้ก่อน
+            document.getElementById('editFile').value = '';
             document.getElementById('editModal').classList.remove('hidden');
         }
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.add('hidden');
-        }
+        function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
 
         async function confirmEdit() {
             const newName = document.getElementById('editNewName').value.trim();
@@ -229,28 +206,31 @@
             const btn = document.getElementById('confirmEditBtn');
             const originalText = btn.innerText;
 
-            if (!newName) return alert("กรุณาระบุชื่อไฟล์");
+            // 🔥 แก้ไข Logic การตรวจสอบ
+            // ถ้าไม่ได้เลือกไฟล์ใหม่ และชื่อก็ว่างเปล่า -> ห้ามส่ง
+            if (fileInput.files.length === 0 && !newName) {
+                return alert("กรุณาระบุชื่อใหม่ หรือเลือกไฟล์รูปภาพ");
+            }
 
-            btn.disabled = true;
-            btn.innerText = "⏳ กำลังบันทึก...";
+            btn.disabled = true; btn.innerText = "⏳ กำลังบันทึก...";
 
             try {
-                // กรณี 1: มีการเลือกไฟล์ -> ใช้ API Replace
+                // กรณี 1: มีการเลือกไฟล์ (Replace)
                 if (fileInput.files.length > 0) {
                     const formData = new FormData();
                     formData.append('file', fileInput.files[0]);
                     formData.append('public_id', currentTargetId);
-                    formData.append('new_name', newName); // ส่งชื่อใหม่ไปด้วย
+                    formData.append('new_name', newName); // ส่งชื่อใหม่ (หรือค่าว่าง) ไปให้หลังบ้านจัดการ
 
                     const res = await fetch('/replace_image', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status === 'success') {
-                        alert("✅ เปลี่ยนรูปและชื่อเรียบร้อย!");
+                        alert("✅ เปลี่ยนรูปเรียบร้อย!");
                         window.location.reload();
                     } else { throw new Error(data.message); }
 
                 } 
-                // กรณี 2: ไม่เลือกไฟล์ -> ใช้ API Rename (เปลี่ยนชื่ออย่างเดียว)
+                // กรณี 2: ไม่เลือกไฟล์ (Rename Only)
                 else {
                     const formData = new FormData();
                     formData.append('old_id', currentTargetId);
@@ -267,23 +247,19 @@
             } catch (e) {
                 alert("เกิดข้อผิดพลาด: " + e.message);
             } finally {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                closeEditModal();
+                btn.disabled = false; btn.innerText = originalText; closeEditModal();
             }
         }
 
         // --- Queue Upload (Logic เดิม) ---
         let fileQueue = [], totalFiles = 0, successCount = 0, failCount = 0, activeUploads = 0;
         const CONCURRENCY_LIMIT = 2;
-
         function log(msg, type='info') {
             const area = document.getElementById('logArea');
             const color = type === 'error' ? 'text-red-400' : 'text-green-400';
             area.innerHTML += `<div class="${color}">> ${msg}</div>`;
             area.scrollTop = area.scrollHeight;
         }
-
         function startQueueUpload() {
             const files = document.getElementById('fileInput').files;
             if (files.length === 0) return alert("กรุณาเลือกไฟล์ก่อนครับ");
@@ -294,18 +270,14 @@
             log(`เริ่มคิว ${totalFiles} รูป...`);
             for (let i = 0; i < CONCURRENCY_LIMIT; i++) processNextInQueue();
         }
-
         function processNextInQueue() {
             if (fileQueue.length === 0 && activeUploads === 0) { finishUpload(); return; }
             if (fileQueue.length === 0) return;
             const file = fileQueue.shift();
             const index = totalFiles - fileQueue.length;
             activeUploads++;
-            uploadSingleFile(file, index).then(() => {
-                activeUploads--; updateProgress(); processNextInQueue();
-            });
+            uploadSingleFile(file, index).then(() => { activeUploads--; updateProgress(); processNextInQueue(); });
         }
-
         async function uploadSingleFile(file, index) {
             const formData = new FormData();
             formData.append('file', file);
@@ -320,7 +292,6 @@
                 else { throw new Error(result.message); }
             } catch (error) { failCount++; log(`❌ พลาด: ${error.message}`, 'error'); }
         }
-
         function updateProgress() {
             const processed = successCount + failCount;
             const percent = Math.round((processed / totalFiles) * 100);
@@ -328,11 +299,7 @@
             document.getElementById('percentText').innerText = percent + '%';
             document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount}`;
         }
-
-        function finishUpload() {
-            log('🎉 เสร็จสิ้น! กำลังรีเฟรช...', 'info');
-            setTimeout(() => window.location.reload(), 1500);
-        }
+        function finishUpload() { log('🎉 เสร็จสิ้น! กำลังรีเฟรช...', 'info'); setTimeout(() => window.location.reload(), 1500); }
     </script>
 </body>
 </html>
