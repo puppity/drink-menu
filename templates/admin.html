@@ -26,9 +26,9 @@
                 </summary>
                 <div class="mt-4 pt-4 border-t" id="uploadForm">
                     <div class="p-4 bg-gray-50 rounded text-center text-gray-500 text-sm">
-                        ใช้ระบบอัปโหลดเดิมได้เลยครับ ตั้งชื่อให้เหมือนกัน ระบบจะจับคู่ให้เอง
+                        <p class="mb-2">💡 <b>เคล็ดลับ:</b> ตั้งชื่อไฟล์รูปลายน้ำ และรูปต้นฉบับให้เหมือนกัน ระบบจะจับคู่ให้เองครับ</p>
+                        <a href="#" onclick="alert('ใช้ระบบอัปโหลดจากหน้า Admin เก่า หรืออัปผ่าน Cloudinary ได้เลยครับ')" class="text-blue-500 underline">ดูวิธีอัปโหลด</a>
                     </div>
-                    <a href="#" onclick="alert('ใช้ระบบอัปโหลดด้านบนของเวอร์ชั่นเก่าได้เลยครับ')" class="block mt-2 text-center text-blue-500 underline">หรือคลิกที่นี่เพื่อไปหน้าอัปโหลดเต็ม</a>
                 </div>
             </details>
         </div>
@@ -92,10 +92,18 @@
                     </div>
 
                     <div class="col-span-12 md:col-span-2 flex justify-center gap-2">
+                        
                         <button onclick="openSyncModal('{{ item['name'] }}', '{{ item['wm'] }}', '{{ item['cl'] }}')" 
-                                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition w-full md:w-auto">
-                            <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                                class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition flex-1 md:flex-none flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> <span class="md:hidden">แก้ไข</span>
                         </button>
+
+                        <a href="/delete_sync/{{ item['name'] }}" 
+                           onclick="return confirm('⚠️ คำเตือน!\n\nคุณกำลังจะลบเมนู: {{ item['name'] }}\n\nระบบจะลบรูปทั้ง 2 โซน (ลายน้ำ/ต้นฉบับ) ทิ้งถาวร\nยืนยันหรือไม่?')"
+                           class="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition flex-1 md:flex-none text-center flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-trash"></i> <span class="md:hidden">ลบ</span>
+                        </a>
+
                     </div>
                 </div>
                 {% endfor %}
@@ -158,30 +166,19 @@
 
         function openSyncModal(name, wmUrl, clUrl) {
             originalName = name;
-            
-            // Setup Name
             document.getElementById('editName').value = name;
             
-            // Setup Previews
             const prevWM = document.getElementById('previewWM');
             const prevCL = document.getElementById('previewCL');
             
-            if (wmUrl && wmUrl !== 'None') {
-                prevWM.src = wmUrl; prevWM.classList.remove('hidden'); document.getElementById('noWM').classList.add('hidden');
-            } else {
-                prevWM.classList.add('hidden'); document.getElementById('noWM').classList.remove('hidden');
-            }
+            if (wmUrl && wmUrl !== 'None') { prevWM.src = wmUrl; prevWM.classList.remove('hidden'); document.getElementById('noWM').classList.add('hidden'); } 
+            else { prevWM.classList.add('hidden'); document.getElementById('noWM').classList.remove('hidden'); }
 
-            if (clUrl && clUrl !== 'None') {
-                prevCL.src = clUrl; prevCL.classList.remove('hidden'); document.getElementById('noCL').classList.add('hidden');
-            } else {
-                prevCL.classList.add('hidden'); document.getElementById('noCL').classList.remove('hidden');
-            }
+            if (clUrl && clUrl !== 'None') { prevCL.src = clUrl; prevCL.classList.remove('hidden'); document.getElementById('noCL').classList.add('hidden'); } 
+            else { prevCL.classList.add('hidden'); document.getElementById('noCL').classList.remove('hidden'); }
 
-            // Clear Inputs
             document.getElementById('fileWM').value = '';
             document.getElementById('fileCL').value = '';
-
             document.getElementById('syncModal').classList.remove('hidden');
         }
 
@@ -193,33 +190,27 @@
             const newName = document.getElementById('editName').value.trim();
             const fileWM = document.getElementById('fileWM').files[0];
             const fileCL = document.getElementById('fileCL').files[0];
-            
             const btn = document.getElementById('saveBtn');
             const originalText = btn.innerText;
             btn.innerText = "⏳ กำลังประมวลผล...";
             btn.disabled = true;
 
             try {
-                // 1. ถ้ามีการเปลี่ยนชื่อ -> ยิง API เปลี่ยนชื่อก่อน
                 if (newName && newName !== originalName) {
                     const formData = new FormData();
                     formData.append('old_name', originalName);
                     formData.append('new_name', newName);
-                    
                     const res = await fetch('/rename_sync', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status !== 'success') throw new Error("เปลี่ยนชื่อไม่สำเร็จ: " + data.message);
                 }
 
-                // 2. ถ้ามีการเปลี่ยนรูป -> ยิง API เปลี่ยนรูป (ใช้ชื่อใหม่ ถ้ามีการเปลี่ยน)
                 const targetName = (newName && newName !== '') ? newName : originalName;
-
                 if (fileWM || fileCL) {
                     const formData = new FormData();
                     formData.append('target_name', targetName);
                     if (fileWM) formData.append('file_wm', fileWM);
                     if (fileCL) formData.append('file_cl', fileCL);
-
                     const res = await fetch('/replace_sync', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status !== 'success') throw new Error("อัปโหลดรูปไม่สำเร็จ: " + data.message);
