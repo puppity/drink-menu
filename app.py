@@ -184,20 +184,22 @@ def upload_api():
     # ... (โค้ดด้านบนเหมือนเดิม) ...
 
 # 🔥 เพิ่ม Route สำหรับการ "แทนที่รูปภาพ" (Replace)
+# ... (โค้ดส่วนบนเหมือนเดิม) ...
+
 @app.route('/replace_image', methods=['POST'])
 def replace_image():
     if not session.get('logged_in'):
         return {'status': 'error', 'message': 'Unauthorized'}, 401
     
     file = request.files.get('file')
-    public_id = request.form.get('public_id') # รับรหัสรูปเดิมมา (เช่น menu/clean/img01)
+    old_public_id = request.form.get('public_id') # ID เดิม (เช่น menu/clean/coffee)
+    new_custom_name = request.form.get('new_name', '').strip() # ชื่อใหม่ที่ user อาจจะกรอก
 
-    if file and public_id:
+    if file and old_public_id:
         try:
-            # แปลงไฟล์เป็น Byte
+            # 1. เตรียมรูปภาพ
             img = Image.open(file)
             if img.mode != 'RGB': img = img.convert('RGB')
-            # ย่อรูป (เหมือนเดิม)
             img.draft('RGB', (2048, 2048))
             if img.width > 2048 or img.height > 2048: 
                 img.thumbnail((2048, 2048))
@@ -206,16 +208,32 @@ def replace_image():
             img.save(img_byte_arr, format='JPEG', quality=85)
             img_byte_arr.seek(0)
             
-            # 🚀 สั่งอัปโหลดทับ (overwrite=True) และล้าง Cache (invalidate=True)
-            # สำคัญมาก: invalidate=True จะทำให้รูปใหม่โชว์ทันที ไม่ติด Cache เดิม
-            cloudinary.uploader.upload(
-                img_byte_arr, 
-                public_id=public_id, 
-                overwrite=True, 
-                invalidate=True 
-            )
+            # 2. ตรวจสอบโฟลเดอร์เดิม
+            if "watermarked" in old_public_id:
+                folder = "menu/watermarked"
+            else:
+                folder = "menu/clean"
+
+            # 3. กำหนดชื่อใหม่ (Target Name)
+            if new_custom_name:
+                # กรณี A: User กรอกชื่อใหม่ -> ใช้ชื่อนั้น
+                filename = new_custom_name
+            else:
+                # กรณี B: ไม่กรอก -> ใช้ชื่อไฟล์ที่อัปโหลดมา
+                filename = os.path.splitext(file.filename)[0]
+
+            new_public_id = f"{folder}/{filename}"
+
+            # 4. ตัดสินใจว่าจะ "ทับ" หรือ "ลบแล้วสร้างใหม่"
+            if new_public_id == old_public_id:
+                # ชื่อเดิม = ทับเลย (Overwrite)
+                cloudinary.uploader.upload(img_byte_arr, public_id=new_public_id, overwrite=True, invalidate=True)
+            else:
+                # ชื่อเปลี่ยน = ลบอันเก่าทิ้ง -> อัปอันใหม่
+                cloudinary.uploader.destroy(old_public_id) # ลบตัวเก่า
+                cloudinary.uploader.upload(img_byte_arr, public_id=new_public_id, overwrite=True, invalidate=True) # สร้างตัวใหม่
+
             img.close()
-            
             return {'status': 'success'}
 
         except Exception as e:
@@ -223,9 +241,12 @@ def replace_image():
             
     return {'status': 'error', 'message': 'ข้อมูลไม่ครบ'}, 400
 
+# ... (โค้ดส่วนล่างเหมือนเดิม) ...
+
 # ... (บรรทัด if __name__ == '__main__': เหมือนเดิม) ...
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
