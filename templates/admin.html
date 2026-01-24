@@ -1,153 +1,259 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin - จัดการเมนู</title>
+    <title>Admin - จัดการรูปภาพ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 p-5 font-sans">
-    <div class="max-w-3xl mx-auto">
+<body class="bg-gray-100 p-4 font-sans text-gray-800">
+    <div class="max-w-4xl mx-auto">
         
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">⚙️ จัดการรูปภาพ</h1>
-            <a href="/" class="text-blue-600 underline text-sm">กลับหน้าหลัก</a>
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h1 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-gear"></i> แอดมินจัดการรูป</h1>
+            <a href="/" class="bg-white border px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-bold shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> ไปหน้าบ้าน
+            </a>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-lg font-bold mb-4 border-b pb-2">📤 อัปโหลดแบบคิว </h2>
+        <div class="bg-white p-6 rounded-2xl shadow-sm mb-8 border border-gray-200">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-blue-600"></i> อัปโหลดรูปใหม่
+            </h2>
             
             <div id="uploadForm">
-                <div class="mb-4 bg-gray-50 p-3 rounded border">
-                    <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซนรูปภาพ:</label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="radio" name="type" value="watermarked" checked class="w-4 h-4 text-blue-600">
-                            <span class="ml-2 text-sm">แบบมีชื่อเมนูติดที่รูป</span>
+                <div class="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซน:</label>
+                    <div class="flex gap-6">
+                        <label class="flex items-center cursor-pointer hover:text-blue-600 transition">
+                            <input type="radio" name="type" value="watermarked" checked class="w-5 h-5 text-blue-600 accent-blue-600">
+                            <span class="ml-2 font-medium">💧 มีลายน้ำ</span>
                         </label>
-                        <label class="flex items-center cursor-pointer">
-                            <input type="radio" name="type" value="clean" class="w-4 h-4 text-blue-600">
-                            <span class="ml-2 text-sm">แบบไม่มีชื่อเมนูติดที่รูป</span>
+                        <label class="flex items-center cursor-pointer hover:text-green-600 transition">
+                            <input type="radio" name="type" value="clean" class="w-5 h-5 text-green-600 accent-green-600">
+                            <span class="ml-2 font-medium">✨ ต้นฉบับ</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="block mb-2 text-sm font-bold">ชื่อเมนู (เลือกได้):</label>
-                        <input type="text" id="customName" class="w-full p-2 border rounded" placeholder="เช่น ชาเขียว (ถ้าไม่ใส่จะใช้ชื่อเดิม)">
+                        <label class="block mb-2 text-sm font-bold">ชื่อนำหน้า (Option):</label>
+                        <input type="text" id="customName" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="เช่น ชาไทย">
                     </div>
                     <div>
-                        <label class="block mb-2 text-sm font-bold">เลือกรูปภาพ (เลือกทีละ 100 รูปได้เลย):</label>
-                        <input type="file" id="fileInput" multiple accept="image/*" class="w-full p-2 border rounded bg-gray-50">
+                        <label class="block mb-2 text-sm font-bold">เลือกไฟล์ (หลายรูปได้):</label>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="w-full p-2 border rounded-xl bg-gray-50">
                     </div>
                 </div>
 
-                <button onclick="startQueueUpload()" id="startBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow transition">
-                    🚀 เริ่มอัปโหลด (จัดคิวอัตโนมัติ)
+                <button onclick="startQueueUpload()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg active:scale-95 transition">
+                    🚀 เริ่มอัปโหลด
                 </button>
             </div>
 
             <div id="progressArea" class="hidden mt-6">
                 <div class="flex justify-between text-sm font-bold mb-1">
-                    <span id="statusText">กำลังอัปโหลด...</span>
+                    <span id="statusText">กำลังทำงาน...</span>
                     <span id="percentText">0%</span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-4 mb-4 overflow-hidden">
-                    <div id="progressBar" class="bg-green-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                    <div id="progressBar" class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
-
-                <div id="logArea" class="h-40 overflow-y-auto bg-gray-900 text-green-400 p-3 rounded text-xs font-mono border border-gray-700">
-                    <p class="text-gray-500">Waiting to start...</p>
-                </div>
+                <div id="logArea" class="h-32 overflow-y-auto bg-gray-900 text-green-400 p-3 rounded-xl text-xs font-mono border border-gray-700"></div>
             </div>
         </div>
 
-        <h2 class="text-lg font-bold mb-3 text-gray-700">📂 รูปภาพล่าสุดในระบบ</h2>
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            {% for img in images %}
-            <div class="flex items-center justify-between p-3 border-b hover:bg-gray-50">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <img src="{{ img['secure_url'] }}" class="w-12 h-12 object-cover rounded bg-gray-200">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-medium text-gray-700 truncate w-40">
-                            {{ img['public_id'].split('/')[-1] }}
-                        </span>
-                        <span class="text-xs text-gray-400">
-                            {{ '💧 ลายน้ำ' if 'watermarked' in img['public_id'] else '✨ ต้นฉบับ' }}
-                        </span>
+        <div class="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
+            <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-images"></i> รายการรูปภาพทั้งหมด</h2>
+            
+            <div class="relative w-full md:w-1/2">
+                <input type="text" id="searchInput" onkeyup="searchImages()" 
+                       placeholder="🔍 พิมพ์ชื่อเพื่อค้นหา..." 
+                       class="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div id="imageList" class="divide-y divide-gray-100">
+                {% for img in images %}
+                <div class="image-item flex items-center justify-between p-4 hover:bg-gray-50 transition group" 
+                     data-name="{{ img['public_id'] }}">
+                    
+                    <div class="flex items-center gap-4 overflow-hidden">
+                        <div class="relative w-16 h-16 flex-shrink-0">
+                            <img src="{{ img['secure_url'] }}" class="w-full h-full object-cover rounded-lg border bg-gray-100 img-preview">
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <span class="font-bold text-gray-800 text-sm break-all">
+                                {{ img['public_id'].split('/')[-1] }}
+                            </span>
+                            <span class="text-xs text-gray-500 mt-1">
+                                {% if 'watermarked' in img['public_id'] %}
+                                    <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">💧 ลายน้ำ</span>
+                                {% else %}
+                                    <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✨ ต้นฉบับ</span>
+                                {% endif %}
+                                <span class="ml-2 text-gray-400">{{ img['created_at'][:10] }}</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="openReplaceModal('{{ img['public_id'] }}')" 
+                                class="bg-yellow-50 text-yellow-600 border border-yellow-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-100 transition flex items-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> <span class="hidden md:inline">แทนที่</span>
+                        </button>
+                        
+                        <a href="/delete/{{ img['public_id'] }}" 
+                           onclick="return confirm('⚠️ ยืนยันลบรูปนี้ถาวร?')"
+                           class="bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition flex items-center gap-1">
+                           <i class="fa-solid fa-trash"></i> <span class="hidden md:inline">ลบ</span>
+                        </a>
                     </div>
                 </div>
-                <a href="/delete/{{ img['public_id'] }}" 
-                   onclick="return confirm('ยืนยันที่จะลบรูปนี้?')"
-                   class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold hover:bg-red-200">
-                   ลบ
-                </a>
+                {% endfor %}
             </div>
-            {% endfor %}
+            
+            <div id="noResult" class="hidden p-10 text-center text-gray-400">
+                <i class="fa-regular fa-face-frown text-4xl mb-2"></i>
+                <p>ไม่พบรูปภาพที่ค้นหา</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="replaceModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl scale-up-center">
+            <h3 class="text-lg font-bold mb-4 text-gray-800">🔄 แทนที่รูปภาพ</h3>
+            <p class="text-sm text-gray-500 mb-4">
+                กำลังจะแทนที่ไฟล์: <br>
+                <b id="targetName" class="text-blue-600 break-all">...</b>
+            </p>
+            
+            <input type="file" id="replaceFile" accept="image/*" class="w-full mb-6 text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-full file:border-0
+              file:text-sm file:font-semibold
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100">
+            
+            <div class="flex gap-3">
+                <button onclick="closeReplaceModal()" class="flex-1 py-2 rounded-xl text-gray-500 font-bold hover:bg-gray-100">ยกเลิก</button>
+                <button onclick="confirmReplace()" id="confirmReplaceBtn" class="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 shadow-lg">ยืนยัน</button>
+            </div>
         </div>
     </div>
 
     <script>
-        let fileQueue = [];
-        let totalFiles = 0;
-        let successCount = 0;
-        let failCount = 0;
-        let isUploading = false;
-        
-        // 🔥 Config: จำนวนรูปที่จะส่งไปพร้อมกัน (2 รูปกำลังดีสำหรับ Server ฟรี)
-        const CONCURRENCY_LIMIT = 2; 
-        let activeUploads = 0;
+        // --- 🔍 ระบบค้นหา (Search) ---
+        function searchImages() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let items = document.getElementsByClassName('image-item');
+            let visibleCount = 0;
+
+            for (let i = 0; i < items.length; i++) {
+                let name = items[i].getAttribute('data-name').toLowerCase();
+                if (name.includes(input)) {
+                    items[i].style.display = "";
+                    visibleCount++;
+                } else {
+                    items[i].style.display = "none";
+                }
+            }
+            
+            // โชว์/ซ่อน ข้อความ "ไม่พบข้อมูล"
+            document.getElementById('noResult').style.display = (visibleCount === 0) ? "block" : "none";
+        }
+
+        // --- 🔄 ระบบแทนที่รูป (Replace) ---
+        let currentTargetId = '';
+
+        function openReplaceModal(publicId) {
+            currentTargetId = publicId;
+            document.getElementById('targetName').innerText = publicId.split('/').pop();
+            document.getElementById('replaceModal').classList.remove('hidden');
+            document.getElementById('replaceFile').value = ''; // Reset file
+        }
+
+        function closeReplaceModal() {
+            document.getElementById('replaceModal').classList.add('hidden');
+        }
+
+        async function confirmReplace() {
+            const fileInput = document.getElementById('replaceFile');
+            if (fileInput.files.length === 0) return alert("กรุณาเลือกไฟล์ใหม่ด้วยครับ");
+
+            const btn = document.getElementById('confirmReplaceBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ กำลังอัปโหลด...";
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('public_id', currentTargetId); // ส่ง ID รูปเดิมไป เพื่อทับ
+
+            try {
+                const res = await fetch('/replace_image', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    alert("✅ แทนที่รูปเรียบร้อย!");
+                    window.location.reload(); // รีเฟรชเพื่อดูรูปใหม่
+                } else {
+                    alert("เกิดข้อผิดพลาด: " + data.message);
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                closeReplaceModal();
+            }
+        }
+
+        // --- 📤 ระบบคิวอัปโหลด (Queue Upload - เหมือนเดิม) ---
+        let fileQueue = [], totalFiles = 0, successCount = 0, failCount = 0, activeUploads = 0;
+        const CONCURRENCY_LIMIT = 2;
 
         function log(msg, type='info') {
             const area = document.getElementById('logArea');
             const color = type === 'error' ? 'text-red-400' : 'text-green-400';
             area.innerHTML += `<div class="${color}">> ${msg}</div>`;
-            area.scrollTop = area.scrollHeight; // Auto scroll
+            area.scrollTop = area.scrollHeight;
         }
 
         function startQueueUpload() {
             const files = document.getElementById('fileInput').files;
             if (files.length === 0) return alert("กรุณาเลือกไฟล์ก่อนครับ");
 
-            // เตรียมหน้าจอ
             document.getElementById('uploadForm').classList.add('opacity-50', 'pointer-events-none');
             document.getElementById('progressArea').classList.remove('hidden');
-            document.getElementById('logArea').innerHTML = ''; // Clear log
+            document.getElementById('logArea').innerHTML = '';
 
-            // สร้างคิว
             fileQueue = Array.from(files);
             totalFiles = fileQueue.length;
-            successCount = 0;
-            failCount = 0;
-            
-            log(`เริ่มระบบคิว... มีทั้งหมด ${totalFiles} รูป`);
-            log(`จะทยอยส่งทีละ ${CONCURRENCY_LIMIT} รูป เพื่อถนอม Server`);
+            successCount = 0; failCount = 0;
 
-            // เริ่มปล่อย Worker ออกไปทำงานตามจำนวน Limit
-            for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
-                processNextInQueue();
-            }
+            log(`เริ่มคิว ${totalFiles} รูป...`);
+            for (let i = 0; i < CONCURRENCY_LIMIT; i++) processNextInQueue();
         }
 
         function processNextInQueue() {
-            // ถ้าคิวหมดแล้ว และไม่มีงานค้าง -> จบ
             if (fileQueue.length === 0 && activeUploads === 0) {
-                finishUpload();
-                return;
+                finishUpload(); return;
             }
-
-            // ถ้าคิวหมด แต่ยังมีเพื่อนทำงานอยู่ -> รอเพื่อนจบ
             if (fileQueue.length === 0) return;
 
-            // ดึงงานออกจากคิว
             const file = fileQueue.shift();
-            const index = totalFiles - fileQueue.length; // ลำดับรูป
+            const index = totalFiles - fileQueue.length;
             activeUploads++;
 
             uploadSingleFile(file, index).then(() => {
                 activeUploads--;
                 updateProgress();
-                processNextInQueue(); // ทำงานเสร็จแล้ว ไปหยิบงานต่อไปทำ
+                processNextInQueue();
             });
         }
 
@@ -160,12 +266,7 @@
 
             try {
                 log(`กำลังส่ง: ${file.name}...`);
-                
-                const response = await fetch('/upload_api', {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch('/upload_api', { method: 'POST', body: formData });
                 const result = await response.json();
                 
                 if (result.status === 'success') {
@@ -183,18 +284,14 @@
         function updateProgress() {
             const processed = successCount + failCount;
             const percent = Math.round((processed / totalFiles) * 100);
-            
             document.getElementById('progressBar').style.width = percent + '%';
             document.getElementById('percentText').innerText = percent + '%';
-            document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount} (จาก ${totalFiles})`;
+            document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount}`;
         }
 
         function finishUpload() {
-            document.getElementById('progressBar').classList.replace('bg-green-500', 'bg-blue-500');
-            log('🎉 อัปโหลดครบทุกไฟล์แล้ว! กำลังรีเฟรช...', 'info');
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            log('🎉 เสร็จสิ้นทั้งหมด! รีเฟรชหน้าจอ...', 'info');
+            setTimeout(() => window.location.reload(), 1500);
         }
     </script>
 </body>
