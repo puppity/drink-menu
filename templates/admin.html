@@ -20,15 +20,50 @@
         </div>
 
         <div class="bg-white p-5 rounded-xl shadow-sm mb-6 border border-gray-200">
-            <details>
-                <summary class="cursor-pointer font-bold text-blue-600 flex items-center gap-2 select-none">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> กดเพื่อเปิด/ปิด แผงอัปโหลดรูปใหม่
+            <details open> <summary class="cursor-pointer font-bold text-blue-600 flex items-center gap-2 select-none">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> แผงอัปโหลดรูปใหม่ (เลือกโซนได้)
                 </summary>
+                
                 <div class="mt-4 pt-4 border-t" id="uploadForm">
-                    <div class="p-4 bg-gray-50 rounded text-center text-gray-500 text-sm">
-                        <p class="mb-2">💡 <b>เคล็ดลับ:</b> ตั้งชื่อไฟล์รูปลายน้ำ และรูปต้นฉบับให้เหมือนกัน ระบบจะจับคู่ให้เองครับ</p>
-                        <a href="#" onclick="alert('ใช้ระบบอัปโหลดจากหน้า Admin เก่า หรืออัปผ่าน Cloudinary ได้เลยครับ')" class="text-blue-500 underline">ดูวิธีอัปโหลด</a>
+                    <div class="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซนที่จะอัปโหลด:</label>
+                        <div class="flex gap-6">
+                            <label class="flex items-center cursor-pointer hover:text-blue-600 transition">
+                                <input type="radio" name="type" value="watermarked" checked class="w-5 h-5 text-blue-600 accent-blue-600">
+                                <span class="ml-2 font-medium">💧 มีลายน้ำ</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer hover:text-green-600 transition">
+                                <input type="radio" name="type" value="clean" class="w-5 h-5 text-green-600 accent-green-600">
+                                <span class="ml-2 font-medium">✨ ต้นฉบับ</span>
+                            </label>
+                        </div>
                     </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block mb-2 text-sm font-bold">ชื่อนำหน้า (Option):</label>
+                            <input type="text" id="customName" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="เช่น ชาไทย (ถ้าชื่อซ้ำจะจับคู่เอง)">
+                        </div>
+                        <div>
+                            <label class="block mb-2 text-sm font-bold">เลือกไฟล์ (ทีละหลายรูปได้):</label>
+                            <input type="file" id="fileInput" multiple accept="image/*" class="w-full p-2 border rounded-xl bg-gray-50">
+                        </div>
+                    </div>
+
+                    <button onclick="startQueueUpload()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg active:scale-95 transition">
+                        🚀 เริ่มอัปโหลด (เข้าคิว)
+                    </button>
+                </div>
+
+                <div id="progressArea" class="hidden mt-6">
+                    <div class="flex justify-between text-sm font-bold mb-1">
+                        <span id="statusText">กำลังทำงาน...</span>
+                        <span id="percentText">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                        <div id="progressBar" class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div id="logArea" class="h-32 overflow-y-auto bg-gray-900 text-green-400 p-3 rounded-xl text-xs font-mono border border-gray-700"></div>
                 </div>
             </details>
         </div>
@@ -92,7 +127,6 @@
                     </div>
 
                     <div class="col-span-12 md:col-span-2 flex justify-center gap-2">
-                        
                         <button onclick="openSyncModal('{{ item['name'] }}', '{{ item['wm'] }}', '{{ item['cl'] }}')" 
                                 class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition flex-1 md:flex-none flex items-center justify-center gap-1">
                             <i class="fa-solid fa-pen-to-square"></i> <span class="md:hidden">แก้ไข</span>
@@ -103,7 +137,6 @@
                            class="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition flex-1 md:flex-none text-center flex items-center justify-center gap-1">
                             <i class="fa-solid fa-trash"></i> <span class="md:hidden">ลบ</span>
                         </a>
-
                     </div>
                 </div>
                 {% endfor %}
@@ -159,6 +192,67 @@
                 let name = item.getAttribute('data-name').toLowerCase();
                 item.style.display = name.includes(input) ? "grid" : "none";
             }
+        }
+
+        // --- 🚀 Queue Upload System (เอากลับมาแล้ว) ---
+        let fileQueue = [], totalFiles = 0, successCount = 0, failCount = 0, activeUploads = 0;
+        const CONCURRENCY_LIMIT = 2;
+
+        function log(msg, type='info') {
+            const area = document.getElementById('logArea');
+            const color = type === 'error' ? 'text-red-400' : 'text-green-400';
+            area.innerHTML += `<div class="${color}">> ${msg}</div>`;
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function startQueueUpload() {
+            const files = document.getElementById('fileInput').files;
+            if (files.length === 0) return alert("กรุณาเลือกไฟล์ก่อนครับ");
+
+            document.getElementById('uploadForm').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('progressArea').classList.remove('hidden');
+            document.getElementById('logArea').innerHTML = '';
+
+            fileQueue = Array.from(files); totalFiles = fileQueue.length; successCount = 0; failCount = 0;
+            log(`เริ่มคิว ${totalFiles} รูป...`);
+            for (let i = 0; i < CONCURRENCY_LIMIT; i++) processNextInQueue();
+        }
+
+        function processNextInQueue() {
+            if (fileQueue.length === 0 && activeUploads === 0) { finishUpload(); return; }
+            if (fileQueue.length === 0) return;
+            const file = fileQueue.shift();
+            const index = totalFiles - fileQueue.length;
+            activeUploads++;
+            uploadSingleFile(file, index).then(() => { activeUploads--; updateProgress(); processNextInQueue(); });
+        }
+
+        async function uploadSingleFile(file, index) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', document.querySelector('input[name="type"]:checked').value);
+            formData.append('name', document.getElementById('customName').value);
+            formData.append('index', index);
+            try {
+                log(`กำลังส่ง: ${file.name}...`);
+                const response = await fetch('/upload_api', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.status === 'success') { successCount++; log(`✅ เสร็จสิ้น: ${result.file}`); } 
+                else { throw new Error(result.message); }
+            } catch (error) { failCount++; log(`❌ พลาด: ${error.message}`, 'error'); }
+        }
+
+        function updateProgress() {
+            const processed = successCount + failCount;
+            const percent = Math.round((processed / totalFiles) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('percentText').innerText = percent + '%';
+            document.getElementById('statusText').innerText = `สำเร็จ ${successCount} | พลาด ${failCount}`;
+        }
+
+        function finishUpload() {
+            log('🎉 เสร็จสิ้น! กำลังรีเฟรช...', 'info');
+            setTimeout(() => window.location.reload(), 1500);
         }
 
         // --- 🛠️ Modal Logic ---
