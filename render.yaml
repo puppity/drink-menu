@@ -1,0 +1,24 @@
+services:
+  # Web Service
+  - type: web
+    name: drink-menu
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -k eventlet -b 0.0.0.0:$PORT app:app
+    autoDeploy: true
+    
+    # Environment Variables (จะตั้งค่าใน Render dashboard)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: SECRET_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CLOUD_NAME
+        sync: false
+      - key: CLOUD_API_KEY
+        sync: false
+      - key: CLOUD_API_SECRET
+        sync: false

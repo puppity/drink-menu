@@ -2,3 +2,4 @@ Flask
 gunicorn
 cloudinary
 Pillow
+python-dotenv
