@@ -27,7 +27,7 @@
                 <div class="mt-4 pt-4 border-t" id="uploadForm">
                     <div class="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
                         <label class="block mb-2 text-sm font-bold text-gray-700">เลือกโซนที่จะอัปโหลด:</label>
-                        <div class="flex gap-6">
+                        <div class="flex gap-6 flex-wrap">
                             <label class="flex items-center cursor-pointer hover:text-blue-600 transition">
                                 <input type="radio" name="type" value="watermarked" checked class="w-5 h-5 text-blue-600 accent-blue-600">
                                 <span class="ml-2 font-medium">💧 มีลายน้ำ</span>
@@ -35,6 +35,10 @@
                             <label class="flex items-center cursor-pointer hover:text-green-600 transition">
                                 <input type="radio" name="type" value="clean" class="w-5 h-5 text-green-600 accent-green-600">
                                 <span class="ml-2 font-medium">✨ ต้นฉบับ</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer hover:text-purple-600 transition">
+                                <input type="radio" name="type" value="premium" class="w-5 h-5 text-purple-600 accent-purple-600">
+                                <span class="ml-2 font-medium">👑 พรีเมี่ยม</span>
                             </label>
                         </div>
                     </div>
@@ -82,7 +86,8 @@
                 <div class="col-span-1 text-center">สถานะ</div>
                 <div class="col-span-2 text-center">💧 ลายน้ำ</div>
                 <div class="col-span-2 text-center">✨ ต้นฉบับ</div>
-                <div class="col-span-5">ชื่อเมนู (Filename)</div>
+                <div class="col-span-2 text-center">👑 พรีเมี่ยม</div>
+                <div class="col-span-3">ชื่อเมนู (Filename)</div>
                 <div class="col-span-2 text-center">จัดการ</div>
             </div>
 
@@ -91,8 +96,12 @@
                 <div class="menu-item grid grid-cols-12 gap-4 p-4 items-center hover:bg-blue-50 transition group" data-name="{{ item['name'] }}">
                     
                     <div class="col-span-2 md:col-span-1 text-center flex items-center justify-center">
-                        {% if item['wm'] and item['cl'] %}
-                            <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-lg shadow-sm" title="สมบูรณ์ (มีครบ)">
+                        {% if item['wm'] and item['cl'] and item['pm'] %}
+                            <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-lg shadow-sm" title="สมบูรณ์ (มีครบทั้ง 3 โซน)">
+                                <i class="fa-solid fa-crown"></i>
+                            </div>
+                        {% elif item['wm'] and item['cl'] %}
+                            <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-lg shadow-sm" title="สมบูรณ์ (มีครบ 2 โซน)">
                                 <i class="fa-solid fa-link"></i>
                             </div>
                         {% else %}
@@ -118,22 +127,33 @@
                         {% endif %}
                     </div>
 
-                    <div class="col-span-12 md:col-span-5 pt-2 md:pt-0 text-center md:text-left">
+                    <div class="col-span-5 md:col-span-2 flex justify-center">
+                        {% if item['pm'] %}
+                            <img src="{{ item['pm'] }}" class="h-16 w-16 object-cover rounded-lg border-2 border-purple-300 bg-white shadow-sm cursor-pointer hover:scale-150 transition z-10" onclick="window.open(this.src)">
+                        {% else %}
+                            <div class="h-16 w-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-300 text-xs">ไม่มีรูป</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-span-12 md:col-span-3 pt-2 md:pt-0 text-center md:text-left">
                         <span class="font-bold text-gray-800 text-lg break-all block">{{ item['name'] }}</span>
                         <span class="text-xs text-gray-400">อัปเดต: {{ item['created_at'][:10] }}</span>
+                        {% if item['pm'] %}
+                            <span class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded ml-2">👑 Premium</span>
+                        {% endif %}
                         {% if not item['wm'] or not item['cl'] %}
                             <span class="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded ml-2">⚠️ ขาดไฟล์คู่</span>
                         {% endif %}
                     </div>
 
                     <div class="col-span-12 md:col-span-2 flex justify-center gap-2">
-                        <button onclick="openSyncModal('{{ item['name'] }}', '{{ item['wm'] }}', '{{ item['cl'] }}')" 
+                        <button onclick="openSyncModal('{{ item['name'] }}', '{{ item['wm'] }}', '{{ item['cl'] }}', '{{ item['pm'] }}')" 
                                 class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition flex-1 md:flex-none flex items-center justify-center gap-1">
                             <i class="fa-solid fa-pen-to-square"></i> <span class="md:hidden">แก้ไข</span>
                         </button>
 
                         <a href="/delete_sync/{{ item['name'] }}" 
-                           onclick="return confirm('⚠️ คำเตือน!\n\nคุณกำลังจะลบเมนู: {{ item['name'] }}\n\nระบบจะลบรูปทั้ง 2 โซน (ลายน้ำ/ต้นฉบับ) ทิ้งถาวร\nยืนยันหรือไม่?')"
+                           onclick="return confirm('⚠️ คำเตือน!\n\nคุณกำลังจะลบเมนู: {{ item['name'] }}\n\nระบบจะลบรูปทั้ง 3 โซน (ลายน้ำ/ต้นฉบับ/พรีเมี่ยม) ทิ้งถาวร\nยืนยันหรือไม่?')"
                            class="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition flex-1 md:flex-none text-center flex items-center justify-center gap-1">
                             <i class="fa-solid fa-trash"></i> <span class="md:hidden">ลบ</span>
                         </a>
@@ -157,10 +177,10 @@
                 <input type="text" id="editName" class="w-full p-3 border rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-3 gap-3 mb-6">
                 <div class="text-center">
                     <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full mb-2 inline-block">💧 โซนลายน้ำ</span>
-                    <div class="relative h-32 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden border">
+                    <div class="relative h-28 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden border">
                         <img id="previewWM" class="h-full w-full object-contain">
                         <div id="noWM" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs hidden">ไม่มีรูปเดิม</div>
                     </div>
@@ -169,11 +189,20 @@
 
                 <div class="text-center">
                     <span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full mb-2 inline-block">✨ โซนต้นฉบับ</span>
-                    <div class="relative h-32 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden border">
+                    <div class="relative h-28 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden border">
                         <img id="previewCL" class="h-full w-full object-contain">
                         <div id="noCL" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs hidden">ไม่มีรูปเดิม</div>
                     </div>
                     <input type="file" id="fileCL" accept="image/*" class="text-xs w-full text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                </div>
+
+                <div class="text-center">
+                    <span class="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded-full mb-2 inline-block">👑 โซนพรีเมี่ยม</span>
+                    <div class="relative h-28 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden border">
+                        <img id="previewPM" class="h-full w-full object-contain">
+                        <div id="noPM" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs hidden">ไม่มีรูปเดิม</div>
+                    </div>
+                    <input type="file" id="filePM" accept="image/*" class="text-xs w-full text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
                 </div>
             </div>
 
@@ -258,12 +287,13 @@
         // --- 🛠️ Modal Logic ---
         let originalName = '';
 
-        function openSyncModal(name, wmUrl, clUrl) {
+        function openSyncModal(name, wmUrl, clUrl, pmUrl) {
             originalName = name;
             document.getElementById('editName').value = name;
             
             const prevWM = document.getElementById('previewWM');
             const prevCL = document.getElementById('previewCL');
+            const prevPM = document.getElementById('previewPM');
             
             if (wmUrl && wmUrl !== 'None') { prevWM.src = wmUrl; prevWM.classList.remove('hidden'); document.getElementById('noWM').classList.add('hidden'); } 
             else { prevWM.classList.add('hidden'); document.getElementById('noWM').classList.remove('hidden'); }
@@ -271,8 +301,12 @@
             if (clUrl && clUrl !== 'None') { prevCL.src = clUrl; prevCL.classList.remove('hidden'); document.getElementById('noCL').classList.add('hidden'); } 
             else { prevCL.classList.add('hidden'); document.getElementById('noCL').classList.remove('hidden'); }
 
+            if (pmUrl && pmUrl !== 'None') { prevPM.src = pmUrl; prevPM.classList.remove('hidden'); document.getElementById('noPM').classList.add('hidden'); } 
+            else { prevPM.classList.add('hidden'); document.getElementById('noPM').classList.remove('hidden'); }
+
             document.getElementById('fileWM').value = '';
             document.getElementById('fileCL').value = '';
+            document.getElementById('filePM').value = '';
             document.getElementById('syncModal').classList.remove('hidden');
         }
 
@@ -284,6 +318,7 @@
             const newName = document.getElementById('editName').value.trim();
             const fileWM = document.getElementById('fileWM').files[0];
             const fileCL = document.getElementById('fileCL').files[0];
+            const filePM = document.getElementById('filePM').files[0];
             const btn = document.getElementById('saveBtn');
             const originalText = btn.innerText;
             btn.innerText = "⏳ กำลังประมวลผล...";
@@ -296,15 +331,16 @@
                     formData.append('new_name', newName);
                     const res = await fetch('/rename_sync', { method: 'POST', body: formData });
                     const data = await res.json();
-                    if (data.status !== 'success') throw new Error("เปลี่ยนชื่อไม่สำเร็จ: " + data.message);
+                    if (data.status !== 'success' && data.status !== 'partial') throw new Error("เปลี่ยนชื่อไม่สำเร็จ: " + data.message);
                 }
 
                 const targetName = (newName && newName !== '') ? newName : originalName;
-                if (fileWM || fileCL) {
+                if (fileWM || fileCL || filePM) {
                     const formData = new FormData();
                     formData.append('target_name', targetName);
                     if (fileWM) formData.append('file_wm', fileWM);
                     if (fileCL) formData.append('file_cl', fileCL);
+                    if (filePM) formData.append('file_pm', filePM);
                     const res = await fetch('/replace_sync', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.status !== 'success') throw new Error("อัปโหลดรูปไม่สำเร็จ: " + data.message);
