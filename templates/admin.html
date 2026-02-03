@@ -151,7 +151,13 @@
                         
                         <!-- Toggle Visibility สำหรับทุกโซน (4 โซน) -->
                         <div class="mt-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200">
-                            <p class="text-xs font-bold text-gray-700 mb-2">🎯 เลือกโซนที่จะแสดง:</p>
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-xs font-bold text-gray-700">🎯 เลือกโซนที่จะแสดง:</p>
+                                <button onclick="saveIndividualVisibility('{{ item['name'] }}')" 
+                                        class="save-individual-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow transition flex items-center gap-1">
+                                    <i class="fa-solid fa-save"></i> บันทึก
+                                </button>
+                            </div>
                             
                             <!-- โซนธรรมดา -->
                             <div class="mb-2 pb-2 border-b border-gray-200">
@@ -453,7 +459,57 @@
             }
         }
 
-        // --- � Save All Visibility Changes ---
+        // --- 💾 Save Individual Visibility (รายตัว) ---
+        async function saveIndividualVisibility(filename) {
+            // หาปุ่มของเมนูนี้
+            const menuItem = document.querySelector(`.menu-item[data-name="${filename}"]`);
+            if (!menuItem) return;
+            
+            const btn = menuItem.querySelector('.save-individual-btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                const normalWmCheckbox = menuItem.querySelector('.toggle-normal-wm');
+                const normalClCheckbox = menuItem.querySelector('.toggle-normal-cl');
+                const premiumWmCheckbox = menuItem.querySelector('.toggle-premium-wm');
+                const premiumClCheckbox = menuItem.querySelector('.toggle-premium-cl');
+                
+                const formData = new FormData();
+                formData.append('filename', filename);
+                formData.append('show_normal_watermark', normalWmCheckbox.checked);
+                formData.append('show_normal_clean', normalClCheckbox.checked);
+                formData.append('show_premium_watermark', premiumWmCheckbox.checked);
+                formData.append('show_premium_clean', premiumClCheckbox.checked);
+                
+                const res = await fetch('/toggle_visibility', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // แสดง success feedback
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> บันทึกแล้ว';
+                    btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    btn.classList.add('bg-gray-400');
+                    
+                    // รีเซ็ตกลับหลัง 2 วินาที
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('bg-gray-400');
+                        btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (e) {
+                alert(`เกิดข้อผิดพลาด: ${e.message}`);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        // --- 💾 Save All Visibility Changes ---
         async function saveAllVisibility() {
             const btn = document.getElementById('saveAllBtn');
             const originalText = btn.innerHTML;
