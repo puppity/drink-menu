@@ -135,21 +135,26 @@ def save_metadata(metadata):
         logger.error(f"Error saving metadata: {e}")
 
 def get_menu_visibility(filename):
-    """ดึงข้อมูล visibility ของเมนู"""
+    """ดึงข้อมูล visibility ของเมนู - รองรับ 4 โซน"""
     metadata = load_metadata()
     menu_data = metadata['menus'].get(filename, {})
     return {
+        'show_normal_watermark': menu_data.get('show_normal_watermark', True),  # default: แสดง
+        'show_normal_clean': menu_data.get('show_normal_clean', True),  # default: แสดง
         'show_premium_watermark': menu_data.get('show_premium_watermark', False),
         'show_premium_clean': menu_data.get('show_premium_clean', False)
     }
 
-def set_menu_visibility(filename, show_premium_watermark=False, show_premium_clean=False):
-    """ตั้งค่า visibility ของเมนู"""
+def set_menu_visibility(filename, show_normal_watermark=True, show_normal_clean=True, 
+                       show_premium_watermark=False, show_premium_clean=False):
+    """ตั้งค่า visibility ของเมนู - รองรับ 4 โซน"""
     metadata = load_metadata()
     if 'menus' not in metadata:
         metadata['menus'] = {}
     
     metadata['menus'][filename] = {
+        'show_normal_watermark': show_normal_watermark,
+        'show_normal_clean': show_normal_clean,
         'show_premium_watermark': show_premium_watermark,
         'show_premium_clean': show_premium_clean
     }
@@ -165,45 +170,60 @@ def index():
         data = get_cached_images()
         metadata = load_metadata()
         
-        # ดึงรูปโซน "มีลายน้ำ"
-        img_watermark = sorted(data['watermarked'], key=lambda x: x['created_at'], reverse=True)
+        # กรองรูปตาม visibility settings (4 โซน)
+        img_normal_wm = []      # ธรรมดา - มีชื่อเมนู
+        img_normal_cl = []      # ธรรมดา - ไม่มีชื่อเมนู
+        img_premium_wm = []     # พรีเมี่ยม - มีชื่อเมนู
+        img_premium_cl = []     # พรีเมี่ยม - ไม่มีชื่อเมนู
         
-        # ดึงรูปโซน "ไม่มีลายน้ำ" (Clean)
-        img_clean = sorted(data['clean'], key=lambda x: x['created_at'], reverse=True)
-        
-        # ดึงรูปโซน "พรีเมี่ยม" - กรองตาม visibility settings
-        img_premium_wm = []  # พรีเมี่ยมมีลายน้ำ
-        img_premium_cl = []  # พรีเมี่ยมไม่มีลายน้ำ
-        
+        # กรองรูปมีลายน้ำ
         for img in data['watermarked']:
             filename = img['public_id'].split('/')[-1]
             visibility = metadata['menus'].get(filename, {})
+            
+            # default: แสดงในโซนธรรมดา ถ้าไม่มี metadata
+            if visibility.get('show_normal_watermark', True):
+                img_normal_wm.append(img)
             if visibility.get('show_premium_watermark', False):
                 img_premium_wm.append(img)
         
+        # กรองรูปไม่มีลายน้ำ
         for img in data['clean']:
             filename = img['public_id'].split('/')[-1]
             visibility = metadata['menus'].get(filename, {})
+            
+            # default: แสดงในโซนธรรมดา ถ้าไม่มี metadata
+            if visibility.get('show_normal_clean', True):
+                img_normal_cl.append(img)
             if visibility.get('show_premium_clean', False):
                 img_premium_cl.append(img)
         
-        # รวมและเรียงตามวันที่
-        img_premium = sorted(img_premium_wm + img_premium_cl, key=lambda x: x['created_at'], reverse=True)
+        # เรียงตามวันที่ล่าสุด
+        img_normal_wm = sorted(img_normal_wm, key=lambda x: x['created_at'], reverse=True)
+        img_normal_cl = sorted(img_normal_cl, key=lambda x: x['created_at'], reverse=True)
+        img_premium_wm = sorted(img_premium_wm, key=lambda x: x['created_at'], reverse=True)
+        img_premium_cl = sorted(img_premium_cl, key=lambda x: x['created_at'], reverse=True)
         
     except cloudinary.exceptions.Error as e:
         logger.error(f"Cloudinary error in index: {e}")
-        img_watermark = []
-        img_clean = []
-        img_premium = []
+        img_normal_wm = []
+        img_normal_cl = []
+        img_premium_wm = []
+        img_premium_cl = []
         flash('เกิดข้อผิดพลาดในการโหลดรูปภาพ', 'error')
     except Exception as e:
         logger.error(f"Unexpected error in index: {e}")
-        img_watermark = []
-        img_clean = []
-        img_premium = []
+        img_normal_wm = []
+        img_normal_cl = []
+        img_premium_wm = []
+        img_premium_cl = []
         flash('เกิดข้อผิดพลาดที่ไม่คาดคิด', 'error')
         
-    return render_template('index.html', wm_images=img_watermark, cl_images=img_clean, pm_images=img_premium)
+    return render_template('index.html', 
+                         normal_wm_images=img_normal_wm,
+                         normal_cl_images=img_normal_cl,
+                         premium_wm_images=img_premium_wm,
+                         premium_cl_images=img_premium_cl)
 
 # ==========================================
 # 🔐 โซน Login
@@ -518,13 +538,15 @@ def delete_sync(filename):
         
     return redirect(url_for('admin'))
 
-# --- API Toggle Visibility สำหรับโซนพรีเมี่ยม ---
+# --- API Toggle Visibility สำหรับทุกโซน (4 โซน) ---
 @app.route('/toggle_visibility', methods=['POST'])
 def toggle_visibility():
     if not session.get('logged_in'):
         return {'status': 'error', 'message': 'Unauthorized'}, 401
     
     filename = request.form.get('filename')
+    show_normal_watermark = request.form.get('show_normal_watermark') == 'true'
+    show_normal_clean = request.form.get('show_normal_clean') == 'true'
     show_premium_watermark = request.form.get('show_premium_watermark') == 'true'
     show_premium_clean = request.form.get('show_premium_clean') == 'true'
     
@@ -532,8 +554,9 @@ def toggle_visibility():
         return {'status': 'error', 'message': 'ไม่มีชื่อไฟล์'}, 400
     
     try:
-        set_menu_visibility(filename, show_premium_watermark, show_premium_clean)
-        logger.info(f"Updated visibility for {filename}: wm={show_premium_watermark}, cl={show_premium_clean}")
+        set_menu_visibility(filename, show_normal_watermark, show_normal_clean, 
+                          show_premium_watermark, show_premium_clean)
+        logger.info(f"Updated visibility for {filename}: normal_wm={show_normal_watermark}, normal_cl={show_normal_clean}, premium_wm={show_premium_watermark}, premium_cl={show_premium_clean}")
         return {'status': 'success', 'message': 'อัปเดตการแสดงผลเรียบร้อย'}
     except Exception as e:
         logger.error(f"Error toggling visibility: {e}")

@@ -85,10 +85,11 @@
     <div class="max-w-7xl mx-auto relative"> 
         <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 pt-4">☕ คลังรูปเมนูชาพระนคร</h1>
 
-        <div class="flex border-b border-gray-200 mb-4 sticky top-0 bg-gray-50 z-20 pt-2 transition-all max-w-4xl mx-auto" id="topBar">
-            <button onclick="switchTab('watermark')" id="btn-watermark" class="flex-1 pb-3 text-center transition tab-active text-sm md:text-base">💧 มีชื่อเมนู</button>
-            <button onclick="switchTab('clean')" id="btn-clean" class="flex-1 pb-3 text-center transition tab-inactive text-sm md:text-base">✨ ไม่มีชื่อเมนู</button>
-            <button onclick="switchTab('premium')" id="btn-premium" class="flex-1 pb-3 text-center transition tab-inactive text-sm md:text-base">👑 พรีเมี่ยม</button>
+        <div class="flex border-b border-gray-200 mb-4 sticky top-0 bg-gray-50 z-20 pt-2 transition-all max-w-6xl mx-auto overflow-x-auto" id="topBar">
+            <button onclick="switchTab('normal-wm')" id="btn-normal-wm" class="flex-1 pb-3 px-2 text-center transition tab-active text-xs md:text-sm whitespace-nowrap">💧 ธรรมดา-มีชื่อ</button>
+            <button onclick="switchTab('normal-cl')" id="btn-normal-cl" class="flex-1 pb-3 px-2 text-center transition tab-inactive text-xs md:text-sm whitespace-nowrap">✨ ธรรมดา-ไม่มีชื่อ</button>
+            <button onclick="switchTab('premium-wm')" id="btn-premium-wm" class="flex-1 pb-3 px-2 text-center transition tab-inactive text-xs md:text-sm whitespace-nowrap">👑 พรีเมี่ยม-มีชื่อ</button>
+            <button onclick="switchTab('premium-cl')" id="btn-premium-cl" class="flex-1 pb-3 px-2 text-center transition tab-inactive text-xs md:text-sm whitespace-nowrap">🌟 พรีเมี่ยม-ไม่มีชื่อ</button>
         </div>
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
@@ -105,10 +106,14 @@
             </button>
         </div>
 
-        <div id="content-watermark">
-            <div id="grid-watermark" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
-                {% for img in wm_images %}
-                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300 hover:shadow-md">
+        <!-- โซนธรรมดา - มีชื่อเมนู -->
+        <div id="content-normal-wm">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-center">
+                <p class="text-blue-800 font-bold text-sm">💧 โซนธรรมดา - มีชื่อเมนู</p>
+            </div>
+            <div id="grid-normal-wm" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
+                {% for img in normal_wm_images %}
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-blue-100 relative group transition-all duration-300 hover:shadow-md">
                     <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" data-name="{{ img['public_id'].split('/')[-1] }}" onclick="event.stopPropagation(); updateCount();" class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
@@ -120,10 +125,14 @@
             </div>
         </div>
 
-        <div id="content-clean" class="hidden">
-            <div id="grid-clean" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
-                {% for img in cl_images %}
-                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 relative group transition-all duration-300 hover:shadow-md">
+        <!-- โซนธรรมดา - ไม่มีชื่อเมนู -->
+        <div id="content-normal-cl" class="hidden">
+            <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-center">
+                <p class="text-green-800 font-bold text-sm">✨ โซนธรรมดา - ไม่มีชื่อเมนู</p>
+            </div>
+            <div id="grid-normal-cl" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
+                {% for img in normal_cl_images %}
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border border-green-100 relative group transition-all duration-300 hover:shadow-md">
                     <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
                         <input type="checkbox" value="{{ img['secure_url'] }}" data-name="{{ img['public_id'].split('/')[-1] }}" onclick="event.stopPropagation(); updateCount();" class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
                     </div>
@@ -135,13 +144,14 @@
             </div>
         </div>
 
-        <div id="content-premium" class="hidden">
-            <div class="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-4 text-center">
-                <p class="text-purple-800 font-bold">👑 เมนูพรีเมี่ยม - คุณภาพพิเศษ</p>
-                <p class="text-purple-600 text-sm">รูปภาพคุณภาพสูงสำหรับลูกค้าพิเศษ</p>
+        <!-- โซนพรีเมี่ยม - มีชื่อเมนู -->
+        <div id="content-premium-wm" class="hidden">
+            <div class="bg-purple-50 border-2 border-purple-200 rounded-xl p-3 mb-4 text-center">
+                <p class="text-purple-800 font-bold text-sm">👑 โซนพรีเมี่ยม - มีชื่อเมนู</p>
+                <p class="text-purple-600 text-xs">รูปภาพคุณภาพสูงสำหรับลูกค้าพิเศษ</p>
             </div>
-            <div id="grid-premium" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
-                {% for img in pm_images %}
+            <div id="grid-premium-wm" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
+                {% for img in premium_wm_images %}
                 <div class="image-card bg-white p-2 rounded-xl shadow-sm border-2 border-purple-200 relative group transition-all duration-300 hover:shadow-lg">
                     <div class="absolute top-0 right-0 bg-purple-600 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg font-bold z-20">👑 Premium</div>
                     <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
@@ -150,6 +160,27 @@
                     <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 lg:h-48 object-cover rounded-lg mb-2 bg-gray-200">
                     <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">{{ img['public_id'].split('/')[-1] }}</p>
                     <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-purple-50 text-purple-600 text-center py-1.5 rounded-lg text-xs font-bold hover:bg-purple-100">ดูรูปใหญ่</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- โซนพรีเมี่ยม - ไม่มีชื่อเมนู -->
+        <div id="content-premium-cl" class="hidden">
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-3 mb-4 text-center">
+                <p class="text-purple-800 font-bold text-sm">🌟 โซนพรีเมี่ยม - ไม่มีชื่อเมนู</p>
+                <p class="text-purple-600 text-xs">รูปภาพคุณภาพสูงแบบไม่มีชื่อเมนู</p>
+            </div>
+            <div id="grid-premium-cl" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 image-grid">
+                {% for img in premium_cl_images %}
+                <div class="image-card bg-white p-2 rounded-xl shadow-sm border-2 border-pink-200 relative group transition-all duration-300 hover:shadow-lg">
+                    <div class="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg font-bold z-20">🌟 Premium</div>
+                    <div class="selection-overlay hidden absolute inset-0 bg-black bg-opacity-5 z-10 rounded-xl flex items-start justify-end p-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                        <input type="checkbox" value="{{ img['secure_url'] }}" data-name="{{ img['public_id'].split('/')[-1] }}" onclick="event.stopPropagation(); updateCount();" class="custom-checkbox img-checkbox rounded-full shadow-md border-2 border-white bg-white">
+                    </div>
+                    <img src="{{ img['secure_url'] }}?t=1" crossorigin="anonymous" class="w-full h-40 lg:h-48 object-cover rounded-lg mb-2 bg-gray-200">
+                    <p class="text-sm font-bold text-gray-800 truncate mb-1 name-label text-center">{{ img['public_id'].split('/')[-1] }}</p>
+                    <a href="{{ img['secure_url'] }}" target="_blank" class="view-btn block w-full bg-pink-50 text-pink-600 text-center py-1.5 rounded-lg text-xs font-bold hover:bg-pink-100">ดูรูปใหญ่</a>
                 </div>
                 {% endfor %}
             </div>
@@ -187,17 +218,21 @@
 
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        let currentTab = 'watermark'; let isSelectMode = false; let preparedFiles = [];
+        let currentTab = 'normal-wm'; let isSelectMode = false; let preparedFiles = [];
         
         function switchTab(tab) {
             currentTab = tab; if(isSelectMode) exitSelectMode();
-            document.getElementById('content-watermark').classList.add('hidden');
-            document.getElementById('content-clean').classList.add('hidden');
-            document.getElementById('content-premium').classList.add('hidden');
+            document.getElementById('content-normal-wm').classList.add('hidden');
+            document.getElementById('content-normal-cl').classList.add('hidden');
+            document.getElementById('content-premium-wm').classList.add('hidden');
+            document.getElementById('content-premium-cl').classList.add('hidden');
             document.getElementById('content-' + tab).classList.remove('hidden');
-            document.getElementById('btn-watermark').className = "flex-1 pb-3 text-center transition text-sm md:text-base " + (tab === 'watermark' ? 'tab-active' : 'tab-inactive');
-            document.getElementById('btn-clean').className = "flex-1 pb-3 text-center transition text-sm md:text-base " + (tab === 'clean' ? 'tab-active' : 'tab-inactive');
-            document.getElementById('btn-premium').className = "flex-1 pb-3 text-center transition text-sm md:text-base " + (tab === 'premium' ? 'tab-active' : 'tab-inactive');
+            
+            const btnClass = "flex-1 pb-3 px-2 text-center transition text-xs md:text-sm whitespace-nowrap ";
+            document.getElementById('btn-normal-wm').className = btnClass + (tab === 'normal-wm' ? 'tab-active' : 'tab-inactive');
+            document.getElementById('btn-normal-cl').className = btnClass + (tab === 'normal-cl' ? 'tab-active' : 'tab-inactive');
+            document.getElementById('btn-premium-wm').className = btnClass + (tab === 'premium-wm' ? 'tab-active' : 'tab-inactive');
+            document.getElementById('btn-premium-cl').className = btnClass + (tab === 'premium-cl' ? 'tab-active' : 'tab-inactive');
             filterImages(); 
         }
         function filterImages() {
@@ -224,7 +259,13 @@
                     let res = await fetch(img.src); let blob = await res.blob(); zip.file(name, blob);
                 }
                 let content = await zip.generateAsync({type:"blob"});
-                let zipName = currentTab === 'watermark' ? 'Menu_Watermarked.zip' : (currentTab === 'premium' ? 'Menu_Premium.zip' : 'Menu_Original.zip');
+                const zipNames = {
+                    'normal-wm': 'Menu_Normal_Watermarked.zip',
+                    'normal-cl': 'Menu_Normal_Clean.zip',
+                    'premium-wm': 'Menu_Premium_Watermarked.zip',
+                    'premium-cl': 'Menu_Premium_Clean.zip'
+                };
+                let zipName = zipNames[currentTab] || 'Menu.zip';
                 saveAs(content, zipName);
             } catch(e) { alert("เกิดข้อผิดพลาด: " + e.message); } finally { event.target.innerText = oldText; event.target.disabled = false; }
         }
