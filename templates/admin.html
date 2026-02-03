@@ -181,16 +181,21 @@
                         </div>
                     </div>
 
-                    <div class="col-span-12 md:col-span-2 flex justify-center gap-2">
+                    <div class="col-span-12 md:col-span-2 flex justify-center gap-2 flex-wrap">
                         <button onclick="openSyncModal('{{ item['name'] }}', '{{ item['wm'] }}', '{{ item['cl'] }}', '{{ item['pm'] }}')" 
-                                class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition flex-1 md:flex-none flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-pen-to-square"></i> <span class="md:hidden">แก้ไข</span>
+                                class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold shadow hover:bg-blue-700 transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-pen-to-square"></i> <span class="hidden md:inline">แก้ไข</span>
+                        </button>
+
+                        <button onclick="openDuplicateModal('{{ item['name'] }}')" 
+                                class="bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-copy"></i> <span class="hidden md:inline">คัดลอก</span>
                         </button>
 
                         <a href="/delete_sync/{{ item['name'] }}" 
                            onclick="return confirm('⚠️ คำเตือน!\n\nคุณกำลังจะลบเมนู: {{ item['name'] }}\n\nระบบจะลบรูปทั้ง 3 โซน (ลายน้ำ/ต้นฉบับ/พรีเมี่ยม) ทิ้งถาวร\nยืนยันหรือไม่?')"
-                           class="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition flex-1 md:flex-none text-center flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-trash"></i> <span class="md:hidden">ลบ</span>
+                           class="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-xs font-bold hover:bg-red-200 transition text-center flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-trash"></i> <span class="hidden md:inline">ลบ</span>
                         </a>
                     </div>
                 </div>
@@ -243,6 +248,31 @@
 
             <button onclick="saveChanges()" id="saveBtn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 active:scale-95 transition">
                 บันทึกการเปลี่ยนแปลง
+            </button>
+        </div>
+    </div>
+
+    <!-- Duplicate Modal -->
+    <div id="duplicateModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl scale-up-center transform transition-all">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800">📋 คัดลอกเมนู</h3>
+                <button onclick="closeDuplicateModal()" class="text-gray-400 hover:text-red-500 text-xl">✕</button>
+            </div>
+
+            <div class="mb-4 bg-green-50 p-4 rounded-xl border border-green-100">
+                <label class="block text-sm font-bold mb-1 text-gray-700">เมนูต้นฉบับ:</label>
+                <p id="duplicateOriginalName" class="text-lg font-bold text-green-700"></p>
+                <p class="text-xs text-gray-500 mt-1">ระบบจะคัดลอกรูปทั้งหมดและ visibility settings</p>
+            </div>
+
+            <div class="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label class="block text-sm font-bold mb-1 text-gray-700">ชื่อเมนูใหม่:</label>
+                <input type="text" id="duplicateNewName" placeholder="กรอกชื่อเมนูใหม่..." class="w-full p-3 border rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-green-500 outline-none">
+            </div>
+
+            <button onclick="executeDuplicate()" id="duplicateBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 active:scale-95 transition">
+                📋 คัดลอกเมนู
             </button>
         </div>
     </div>
@@ -416,6 +446,60 @@
                 }
             } catch (e) {
                 alert('เกิดข้อผิดพลาด: ' + e.message);
+            }
+        }
+
+        // --- 📋 Duplicate Functions ---
+        let duplicateOriginalName = '';
+
+        function openDuplicateModal(name) {
+            duplicateOriginalName = name;
+            document.getElementById('duplicateOriginalName').innerText = name;
+            document.getElementById('duplicateNewName').value = '';
+            document.getElementById('duplicateModal').classList.remove('hidden');
+        }
+
+        function closeDuplicateModal() {
+            document.getElementById('duplicateModal').classList.add('hidden');
+        }
+
+        async function executeDuplicate() {
+            const newName = document.getElementById('duplicateNewName').value.trim();
+            
+            if (!newName) {
+                alert('กรุณากรอกชื่อเมนูใหม่');
+                return;
+            }
+
+            if (newName === duplicateOriginalName) {
+                alert('ชื่อใหม่ต้องไม่ซ้ำกับชื่อเดิม');
+                return;
+            }
+
+            const btn = document.getElementById('duplicateBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ กำลังคัดลอก...";
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('original_name', duplicateOriginalName);
+                formData.append('new_name', newName);
+
+                const res = await fetch('/duplicate_menu', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.status === 'success' || data.status === 'partial') {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (e) {
+                alert("เกิดข้อผิดพลาด: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
 

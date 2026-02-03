@@ -115,22 +115,53 @@ def clear_cache():
     logger.info("Cache cleared")
 
 def load_metadata():
-    """โหลด metadata จากไฟล์"""
+    """โหลด metadata จาก Cloudinary context (แก้ปัญหา ephemeral filesystem)"""
     try:
+        # ลองโหลดจาก Cloudinary context ก่อน
+        try:
+            result = cloudinary.api.resource_by_context('visibility_metadata', 'menu_visibility_store', max_results=1)
+            if result and 'resources' in result and len(result['resources']) > 0:
+                context = result['resources'][0].get('context', {}).get('custom', {})
+                if 'metadata' in context:
+                    return json.loads(context['metadata'])
+        except:
+            pass
+        
+        # ถ้าไม่มีใน Cloudinary ให้ลองโหลดจากไฟล์ local (สำหรับ dev)
         if os.path.exists(METADATA_FILE):
             with open(METADATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                # Sync ไป Cloudinary ด้วย
+                save_metadata(data)
+                return data
         return {'menus': {}}
     except Exception as e:
         logger.error(f"Error loading metadata: {e}")
         return {'menus': {}}
 
 def save_metadata(metadata):
-    """บันทึก metadata ลงไฟล์"""
+    """บันทึก metadata ลง Cloudinary context (แก้ปัญหา ephemeral filesystem)"""
     try:
+        # บันทึกลงไฟล์ local ก่อน (สำหรับ dev)
         with open(METADATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
-        logger.info("Metadata saved")
+        
+        # บันทึกลง Cloudinary context (persistent)
+        # ใช้ dummy image เป็น metadata store
+        metadata_str = json.dumps(metadata, ensure_ascii=False)
+        try:
+            # อัปโหลด dummy metadata file
+            cloudinary.uploader.upload(
+                "data:text/plain;base64,bWV0YWRhdGE=",  # base64 of "metadata"
+                public_id="menu_visibility_store",
+                resource_type="raw",
+                context=f"visibility_metadata|metadata={metadata_str}",
+                overwrite=True
+            )
+            logger.info("Metadata saved to Cloudinary")
+        except Exception as e:
+            logger.warning(f"Could not save to Cloudinary, using local only: {e}")
+            
     except Exception as e:
         logger.error(f"Error saving metadata: {e}")
 
@@ -537,6 +568,94 @@ def delete_sync(filename):
         flash(f'เกิดข้อผิดพลาด: {e}', 'error')
         
     return redirect(url_for('admin'))
+
+# --- API Duplicate Menu (คัดลอกเมนู - ใช้รูปเดิม เปลี่ยนชื่อ) ---
+@app.route('/duplicate_menu', methods=['POST'])
+def duplicate_menu():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    original_name = request.form.get('original_name')
+    new_name = request.form.get('new_name', '').strip()
+    
+    if not original_name or not new_name:
+        return {'status': 'error', 'message': 'กรุณาระบุชื่อเดิมและชื่อใหม่'}, 400
+    
+    if original_name == new_name:
+        return {'status': 'error', 'message': 'ชื่อใหม่ต้องไม่ซ้ำกับชื่อเดิม'}, 400
+    
+    try:
+        # Normalize ชื่อใหม่
+        new_name = normalize_thai_filename(new_name)
+        new_name = "".join(c for c in new_name if c.isalnum() or c in (' ', '-', '_') or '\u0E00' <= c <= '\u0E7F').strip()
+        
+        duplicated = []
+        errors = []
+        
+        # 1. Duplicate โซนลายน้ำ
+        try:
+            result = cloudinary.api.resource(f"menu/watermarked/{original_name}")
+            url = result['secure_url']
+            cloudinary.uploader.upload(url, public_id=f"menu/watermarked/{new_name}")
+            duplicated.append("watermarked")
+        except cloudinary.exceptions.NotFound:
+            logger.info(f"Watermarked image not found for {original_name}")
+        except Exception as e:
+            logger.error(f"Error duplicating watermarked: {e}")
+            errors.append(f"watermarked: {str(e)}")
+        
+        # 2. Duplicate โซนต้นฉบับ
+        try:
+            result = cloudinary.api.resource(f"menu/clean/{original_name}")
+            url = result['secure_url']
+            cloudinary.uploader.upload(url, public_id=f"menu/clean/{new_name}")
+            duplicated.append("clean")
+        except cloudinary.exceptions.NotFound:
+            logger.info(f"Clean image not found for {original_name}")
+        except Exception as e:
+            logger.error(f"Error duplicating clean: {e}")
+            errors.append(f"clean: {str(e)}")
+        
+        # 3. Duplicate โซนพรีเมี่ยม (ถ้ามี)
+        try:
+            result = cloudinary.api.resource(f"menu/premium/{original_name}")
+            url = result['secure_url']
+            cloudinary.uploader.upload(url, public_id=f"menu/premium/{new_name}")
+            duplicated.append("premium")
+        except cloudinary.exceptions.NotFound:
+            logger.info(f"Premium image not found for {original_name}")
+        except Exception as e:
+            logger.error(f"Error duplicating premium: {e}")
+            errors.append(f"premium: {str(e)}")
+        
+        # 4. คัดลอก visibility settings
+        try:
+            visibility = get_menu_visibility(original_name)
+            set_menu_visibility(
+                new_name,
+                visibility['show_normal_watermark'],
+                visibility['show_normal_clean'],
+                visibility['show_premium_watermark'],
+                visibility['show_premium_clean']
+            )
+        except Exception as e:
+            logger.warning(f"Could not copy visibility settings: {e}")
+        
+        # ล้าง cache
+        clear_cache()
+        
+        if not duplicated:
+            return {'status': 'error', 'message': 'ไม่พบรูปต้นฉบับที่จะคัดลอก'}, 404
+        
+        if errors:
+            return {'status': 'partial', 'message': f'คัดลอกบางส่วนสำเร็จ ({", ".join(duplicated)}). ข้อผิดพลาด: {"; ".join(errors)}'}
+        
+        logger.info(f"Duplicated {original_name} to {new_name}: {duplicated}")
+        return {'status': 'success', 'message': f'✅ คัดลอกเมนู "{original_name}" เป็น "{new_name}" สำเร็จ ({len(duplicated)} โซน)'}
+        
+    except Exception as e:
+        logger.error(f"Error in duplicate_menu: {e}")
+        return {'status': 'error', 'message': str(e)}, 500
 
 # --- API Toggle Visibility สำหรับทุกโซน (4 โซน) ---
 @app.route('/toggle_visibility', methods=['POST'])
