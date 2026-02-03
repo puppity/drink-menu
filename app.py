@@ -115,47 +115,57 @@ def clear_cache():
     logger.info("Cache cleared")
 
 def load_metadata():
-    """โหลด metadata จาก Cloudinary context (แก้ปัญหา ephemeral filesystem)"""
+    """โหลด metadata จาก Cloudinary (แก้ปัญหา ephemeral filesystem)"""
     try:
-        # ลองโหลดจาก Cloudinary context ก่อน
+        # ลองโหลดจาก Cloudinary raw file ก่อน
         try:
-            result = cloudinary.api.resource_by_context('visibility_metadata', 'menu_visibility_store', max_results=1)
-            if result and 'resources' in result and len(result['resources']) > 0:
-                context = result['resources'][0].get('context', {}).get('custom', {})
-                if 'metadata' in context:
-                    return json.loads(context['metadata'])
-        except:
-            pass
+            import requests
+            result = cloudinary.api.resource('menu_metadata_store', resource_type='raw')
+            metadata_url = result.get('secure_url')
+            if metadata_url:
+                response = requests.get(metadata_url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    logger.info("Loaded metadata from Cloudinary")
+                    # Sync ไป local file ด้วย
+                    with open(METADATA_FILE, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    return data
+        except cloudinary.exceptions.NotFound:
+            logger.info("Metadata not found in Cloudinary, will create new")
+        except Exception as e:
+            logger.warning(f"Could not load from Cloudinary: {e}")
         
         # ถ้าไม่มีใน Cloudinary ให้ลองโหลดจากไฟล์ local (สำหรับ dev)
         if os.path.exists(METADATA_FILE):
             with open(METADATA_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                # Sync ไป Cloudinary ด้วย
-                save_metadata(data)
+                logger.info("Loaded metadata from local file")
                 return data
+        
+        # ถ้าไม่มีเลย สร้างใหม่
         return {'menus': {}}
     except Exception as e:
         logger.error(f"Error loading metadata: {e}")
         return {'menus': {}}
 
 def save_metadata(metadata):
-    """บันทึก metadata ลง Cloudinary context (แก้ปัญหา ephemeral filesystem)"""
+    """บันทึก metadata ลง Cloudinary raw file (แก้ปัญหา ephemeral filesystem)"""
     try:
         # บันทึกลงไฟล์ local ก่อน (สำหรับ dev)
         with open(METADATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
         
-        # บันทึกลง Cloudinary context (persistent)
-        # ใช้ dummy image เป็น metadata store
-        metadata_str = json.dumps(metadata, ensure_ascii=False)
+        # บันทึกลง Cloudinary เป็น raw JSON file (persistent)
         try:
-            # อัปโหลด dummy metadata file
+            # สร้าง JSON string
+            metadata_json = json.dumps(metadata, ensure_ascii=False, indent=2)
+            
+            # อัปโหลดเป็น raw file
             cloudinary.uploader.upload(
-                "data:text/plain;base64,bWV0YWRhdGE=",  # base64 of "metadata"
-                public_id="menu_visibility_store",
+                f"data:application/json;base64,{__import__('base64').b64encode(metadata_json.encode()).decode()}",
+                public_id="menu_metadata_store",
                 resource_type="raw",
-                context=f"visibility_metadata|metadata={metadata_str}",
                 overwrite=True
             )
             logger.info("Metadata saved to Cloudinary")
