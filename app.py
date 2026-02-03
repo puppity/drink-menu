@@ -39,6 +39,10 @@ ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 image_cache = {'data': None, 'timestamp': None}
 CACHE_DURATION = timedelta(minutes=5)
 
+# Cache สำหรับ metadata (แก้ปัญหา Rate Limit)
+metadata_cache = {'data': None, 'timestamp': None}
+METADATA_CACHE_DURATION = timedelta(minutes=10)
+
 # Metadata file path
 METADATA_FILE = 'metadata.json'
 
@@ -115,9 +119,18 @@ def clear_cache():
     logger.info("Cache cleared")
 
 def load_metadata():
-    """โหลด metadata จาก Cloudinary (แก้ปัญหา ephemeral filesystem)"""
+    """โหลด metadata จาก cache/Cloudinary (แก้ปัญหา Rate Limit)"""
+    global metadata_cache
+    now = datetime.now()
+    
+    # ตรวจสอบ cache ก่อน (ลด API calls)
+    if metadata_cache['data'] and metadata_cache['timestamp']:
+        if now - metadata_cache['timestamp'] < METADATA_CACHE_DURATION:
+            logger.info("Using cached metadata")
+            return metadata_cache['data']
+    
     try:
-        # ลองโหลดจาก Cloudinary raw file ก่อน
+        # ลองโหลดจาก Cloudinary raw file
         try:
             import requests
             result = cloudinary.api.resource('menu_metadata_store', resource_type='raw')
@@ -127,6 +140,9 @@ def load_metadata():
                 if response.status_code == 200:
                     data = response.json()
                     logger.info("Loaded metadata from Cloudinary")
+                    # อัปเดต cache
+                    metadata_cache['data'] = data
+                    metadata_cache['timestamp'] = now
                     # Sync ไป local file ด้วย
                     with open(METADATA_FILE, 'w', encoding='utf-8') as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -136,25 +152,36 @@ def load_metadata():
         except Exception as e:
             logger.warning(f"Could not load from Cloudinary: {e}")
         
-        # ถ้าไม่มีใน Cloudinary ให้ลองโหลดจากไฟล์ local (สำหรับ dev)
+        # ถ้าไม่มีใน Cloudinary ให้ลองโหลดจากไฟล์ local
         if os.path.exists(METADATA_FILE):
             with open(METADATA_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 logger.info("Loaded metadata from local file")
+                # อัปเดต cache
+                metadata_cache['data'] = data
+                metadata_cache['timestamp'] = now
                 return data
         
         # ถ้าไม่มีเลย สร้างใหม่
-        return {'menus': {}}
+        data = {'menus': {}}
+        metadata_cache['data'] = data
+        metadata_cache['timestamp'] = now
+        return data
     except Exception as e:
         logger.error(f"Error loading metadata: {e}")
         return {'menus': {}}
 
 def save_metadata(metadata):
     """บันทึก metadata ลง Cloudinary raw file (แก้ปัญหา ephemeral filesystem)"""
+    global metadata_cache
     try:
         # บันทึกลงไฟล์ local ก่อน (สำหรับ dev)
         with open(METADATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
+        
+        # อัปเดต cache ทันที (ไม่ต้องรอโหลดใหม่)
+        metadata_cache['data'] = metadata
+        metadata_cache['timestamp'] = datetime.now()
         
         # บันทึกลง Cloudinary เป็น raw JSON file (persistent)
         try:
