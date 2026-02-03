@@ -144,6 +144,21 @@
                         {% if not item['wm'] or not item['cl'] %}
                             <span class="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded ml-2">⚠️ ขาดไฟล์คู่</span>
                         {% endif %}
+                        
+                        <!-- Toggle Visibility สำหรับโซนพรีเมี่ยม -->
+                        <div class="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                            <p class="text-xs font-bold text-purple-700 mb-1">แสดงในโซนพรีเมี่ยม:</p>
+                            <div class="flex gap-2 text-xs">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" class="toggle-premium-wm mr-1" data-filename="{{ item['name'] }}" onchange="toggleVisibility('{{ item['name'] }}')">
+                                    <span>💧 มีลายน้ำ</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" class="toggle-premium-cl mr-1" data-filename="{{ item['name'] }}" onchange="toggleVisibility('{{ item['name'] }}')">
+                                    <span>✨ ไม่มีลายน้ำ</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-span-12 md:col-span-2 flex justify-center gap-2">
@@ -356,6 +371,49 @@
                 btn.disabled = false;
             }
         }
+
+        // --- 👁️ Toggle Visibility Functions ---
+        async function toggleVisibility(filename) {
+            const wmCheckbox = document.querySelector(`.toggle-premium-wm[data-filename="${filename}"]`);
+            const clCheckbox = document.querySelector(`.toggle-premium-cl[data-filename="${filename}"]`);
+            
+            const formData = new FormData();
+            formData.append('filename', filename);
+            formData.append('show_premium_watermark', wmCheckbox.checked);
+            formData.append('show_premium_clean', clCheckbox.checked);
+            
+            try {
+                const res = await fetch('/toggle_visibility', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    console.log(`Updated visibility for ${filename}`);
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.message);
+                }
+            } catch (e) {
+                alert('เกิดข้อผิดพลาด: ' + e.message);
+            }
+        }
+
+        // โหลดสถานะ visibility เมื่อหน้าโหลดเสร็จ
+        window.addEventListener('DOMContentLoaded', async function() {
+            const menuItems = document.querySelectorAll('.menu-item');
+            for (const item of menuItems) {
+                const filename = item.getAttribute('data-name');
+                try {
+                    const res = await fetch(`/get_visibility/${filename}`);
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        const wmCheckbox = item.querySelector('.toggle-premium-wm');
+                        const clCheckbox = item.querySelector('.toggle-premium-cl');
+                        if (wmCheckbox) wmCheckbox.checked = data.data.show_premium_watermark;
+                        if (clCheckbox) clCheckbox.checked = data.data.show_premium_clean;
+                    }
+                } catch (e) {
+                    console.error(`Error loading visibility for ${filename}:`, e);
+                }
+            }
+        });
     </script>
 </body>
 </html>

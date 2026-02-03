@@ -9,6 +9,8 @@ import logging
 from functools import wraps
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import json
+import unicodedata
 
 # Load environment variables from .env file
 load_dotenv()
@@ -37,6 +39,9 @@ ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 image_cache = {'data': None, 'timestamp': None}
 CACHE_DURATION = timedelta(minutes=5)
 
+# Metadata file path
+METADATA_FILE = 'metadata.json'
+
 # ตั้งค่า Cloudinary - ตรวจสอบ required variables
 # ในโหมด development จะข้ามการตรวจสอบถ้าไม่มีค่า
 if os.environ.get('CLOUD_NAME') and os.environ.get('CLOUD_API_KEY') and os.environ.get('CLOUD_API_SECRET'):
@@ -51,6 +56,12 @@ else:
     logger.warning("Cloudinary credentials not found - running in demo mode")
 
 # Helper Functions
+def normalize_thai_filename(filename):
+    """แก้ปัญหาสระภาษาไทย - normalize Unicode"""
+    # Normalize Unicode (NFD -> NFC) เพื่อรวมสระที่แยกกัน
+    normalized = unicodedata.normalize('NFC', filename)
+    return normalized
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -97,19 +108,62 @@ def get_cached_images():
         raise
 
 def clear_cache():
-    """ล้าง cache เมื่อมีการเปลี่ยนแปลงข้อมูล"""
+    """ล้าง cache"""
     global image_cache
     image_cache['data'] = None
     image_cache['timestamp'] = None
     logger.info("Cache cleared")
 
+def load_metadata():
+    """โหลด metadata จากไฟล์"""
+    try:
+        if os.path.exists(METADATA_FILE):
+            with open(METADATA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {'menus': {}}
+    except Exception as e:
+        logger.error(f"Error loading metadata: {e}")
+        return {'menus': {}}
+
+def save_metadata(metadata):
+    """บันทึก metadata ลงไฟล์"""
+    try:
+        with open(METADATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        logger.info("Metadata saved")
+    except Exception as e:
+        logger.error(f"Error saving metadata: {e}")
+
+def get_menu_visibility(filename):
+    """ดึงข้อมูล visibility ของเมนู"""
+    metadata = load_metadata()
+    menu_data = metadata['menus'].get(filename, {})
+    return {
+        'show_premium_watermark': menu_data.get('show_premium_watermark', False),
+        'show_premium_clean': menu_data.get('show_premium_clean', False)
+    }
+
+def set_menu_visibility(filename, show_premium_watermark=False, show_premium_clean=False):
+    """ตั้งค่า visibility ของเมนู"""
+    metadata = load_metadata()
+    if 'menus' not in metadata:
+        metadata['menus'] = {}
+    
+    metadata['menus'][filename] = {
+        'show_premium_watermark': show_premium_watermark,
+        'show_premium_clean': show_premium_clean
+    }
+    save_metadata(metadata)
+    clear_cache()
+
 # ==========================================
-# 🏠 โซนหน้าบ้าน (โชว์เมนู)
+# โซนหน้าบ้าน (โชว์เมนู)
 # ==========================================
 @app.route('/')
 def index():
     try:
         data = get_cached_images()
+        metadata = load_metadata()
         
         # ดึงรูปโซน "มีลายน้ำ"
         img_watermark = sorted(data['watermarked'], key=lambda x: x['created_at'], reverse=True)
@@ -117,8 +171,24 @@ def index():
         # ดึงรูปโซน "ไม่มีลายน้ำ" (Clean)
         img_clean = sorted(data['clean'], key=lambda x: x['created_at'], reverse=True)
         
-        # ดึงรูปโซน "พรีเมี่ยม"
-        img_premium = sorted(data['premium'], key=lambda x: x['created_at'], reverse=True)
+        # ดึงรูปโซน "พรีเมี่ยม" - กรองตาม visibility settings
+        img_premium_wm = []  # พรีเมี่ยมมีลายน้ำ
+        img_premium_cl = []  # พรีเมี่ยมไม่มีลายน้ำ
+        
+        for img in data['watermarked']:
+            filename = img['public_id'].split('/')[-1]
+            visibility = metadata['menus'].get(filename, {})
+            if visibility.get('show_premium_watermark', False):
+                img_premium_wm.append(img)
+        
+        for img in data['clean']:
+            filename = img['public_id'].split('/')[-1]
+            visibility = metadata['menus'].get(filename, {})
+            if visibility.get('show_premium_clean', False):
+                img_premium_cl.append(img)
+        
+        # รวมและเรียงตามวันที่
+        img_premium = sorted(img_premium_wm + img_premium_cl, key=lambda x: x['created_at'], reverse=True)
         
     except cloudinary.exceptions.Error as e:
         logger.error(f"Cloudinary error in index: {e}")
@@ -237,8 +307,11 @@ def upload_api():
         else:
             final_name = os.path.splitext(file.filename)[0]
         
-        # Sanitize filename
-        final_name = "".join(c for c in final_name if c.isalnum() or c in (' ', '-', '_', 'ก-๙')).strip()
+        # Normalize Thai characters (แก้ปัญหาสระแยก)
+        final_name = normalize_thai_filename(final_name)
+        
+        # Sanitize filename - รองรับภาษาไทย
+        final_name = "".join(c for c in final_name if c.isalnum() or c in (' ', '-', '_') or '\u0E00' <= c <= '\u0E7F').strip()
 
         # Process Image with proper resource management
         with Image.open(file) as img:
@@ -444,6 +517,40 @@ def delete_sync(filename):
         flash(f'เกิดข้อผิดพลาด: {e}', 'error')
         
     return redirect(url_for('admin'))
+
+# --- API Toggle Visibility สำหรับโซนพรีเมี่ยม ---
+@app.route('/toggle_visibility', methods=['POST'])
+def toggle_visibility():
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    filename = request.form.get('filename')
+    show_premium_watermark = request.form.get('show_premium_watermark') == 'true'
+    show_premium_clean = request.form.get('show_premium_clean') == 'true'
+    
+    if not filename:
+        return {'status': 'error', 'message': 'ไม่มีชื่อไฟล์'}, 400
+    
+    try:
+        set_menu_visibility(filename, show_premium_watermark, show_premium_clean)
+        logger.info(f"Updated visibility for {filename}: wm={show_premium_watermark}, cl={show_premium_clean}")
+        return {'status': 'success', 'message': 'อัปเดตการแสดงผลเรียบร้อย'}
+    except Exception as e:
+        logger.error(f"Error toggling visibility: {e}")
+        return {'status': 'error', 'message': str(e)}, 500
+
+# --- API ดึงข้อมูล Visibility ---
+@app.route('/get_visibility/<string:filename>')
+def get_visibility(filename):
+    if not session.get('logged_in'):
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    try:
+        visibility = get_menu_visibility(filename)
+        return {'status': 'success', 'data': visibility}
+    except Exception as e:
+        logger.error(f"Error getting visibility: {e}")
+        return {'status': 'error', 'message': str(e)}, 500
 
 if __name__ == '__main__':
     app.run(debug=True)
